@@ -39,10 +39,12 @@ class Interview(Base):
     duration = Column(Float, nullable=True)  # 时长（秒）
     created_at = Column(DateTime, default=datetime.utcnow)
     user_id = Column(Integer, ForeignKey("users.id"))
+    job_position_id = Column(Integer, ForeignKey("job_positions.id"), nullable=True)
     
     # 关系
     user = relationship("User", back_populates="interviews")
     analysis = relationship("InterviewAnalysis", back_populates="interview", uselist=False)
+    job_position = relationship("JobPosition", back_populates="interviews")
     
 
 class InterviewAnalysis(Base):
