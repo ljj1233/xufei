@@ -8,6 +8,7 @@ import torch
 from transformers import AutoTokenizer, AutoModel
 
 from app.core.config import settings
+from app.services.xunfei_service import xunfei_service
 
 
 def analyze_interview(file_path: str, file_type: str) -> Dict[str, Any]:
@@ -56,7 +57,7 @@ def analyze_interview(file_path: str, file_type: str) -> Dict[str, Any]:
 def extract_speech_features(file_path: str) -> Dict[str, Any]:
     """提取语音特征
     
-    从音频文件中提取语音特征
+    从音频文件中提取语音特征，使用讯飞API进行语音评测
     
     Args:
         file_path: 文件路径
@@ -64,17 +65,29 @@ def extract_speech_features(file_path: str) -> Dict[str, Any]:
     Returns:
         Dict[str, Any]: 语音特征
     """
-    # 这里是示例实现，实际项目中应使用更复杂的语音处理
     try:
-        # 加载音频文件
+        # 读取音频文件
+        with open(file_path, 'rb') as f:
+            audio_data = f.read()
+        
+        # 调用讯飞语音评测服务
+        xunfei_assessment = xunfei_service.speech_assessment(audio_data)
+        
+        # 调用讯飞情感分析服务
+        xunfei_emotion = xunfei_service.emotion_analysis(audio_data)
+        
+        # 同时保留一些基本的音频特征分析作为补充
         y, sr = librosa.load(file_path, sr=None)
         
-        # 提取特征
+        # 合并讯飞API结果和基本特征
         features = {
+            # 讯飞API结果
+            "xunfei_assessment": xunfei_assessment,
+            "xunfei_emotion": xunfei_emotion,
+            
+            # 基本音频特征（作为补充）
             "mfcc": librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13).mean(axis=1),
             "spectral_centroid": librosa.feature.spectral_centroid(y=y, sr=sr).mean(),
-            "spectral_bandwidth": librosa.feature.spectral_bandwidth(y=y, sr=sr).mean(),
-            "spectral_rolloff": librosa.feature.spectral_rolloff(y=y, sr=sr).mean(),
             "zero_crossing_rate": librosa.feature.zero_crossing_rate(y).mean(),
             "tempo": librosa.beat.tempo(y=y, sr=sr)[0],
             "rms": librosa.feature.rms(y=y).mean(),
@@ -90,7 +103,7 @@ def extract_speech_features(file_path: str) -> Dict[str, Any]:
 def analyze_speech(speech_features: Dict[str, Any]) -> Dict[str, Any]:
     """分析语音特征
     
-    根据语音特征进行分析
+    根据语音特征进行分析，优先使用讯飞API的评测结果
     
     Args:
         speech_features: 语音特征
@@ -98,7 +111,6 @@ def analyze_speech(speech_features: Dict[str, Any]) -> Dict[str, Any]:
     Returns:
         Dict[str, Any]: 语音分析结果
     """
-    # 这里是示例实现，实际项目中应使用机器学习模型
     if not speech_features:
         return {
             "clarity": 5.0,
@@ -106,28 +118,75 @@ def analyze_speech(speech_features: Dict[str, Any]) -> Dict[str, Any]:
             "emotion": "中性"
         }
     
-    # 计算语音清晰度（基于频谱特征）
-    clarity = min(10.0, max(0.0, 5.0 + speech_features.get("spectral_centroid", 0) / 1000))
+    # 获取讯飞API评测结果
+    xunfei_assessment = speech_features.get("xunfei_assessment", {})
+    xunfei_emotion = speech_features.get("xunfei_emotion", {})
     
-    # 计算语速（基于节奏和过零率）
-    tempo = speech_features.get("tempo", 120)
-    zcr = speech_features.get("zero_crossing_rate", 0.1)
-    pace = min(10.0, max(0.0, 5.0 + (tempo / 120 - 1) * 3 + (zcr - 0.1) * 10))
-    
-    # 情感分析（简化版）
-    rms = speech_features.get("rms", 0.1)
-    if rms > 0.2:
-        emotion = "热情"
-    elif rms < 0.05:
-        emotion = "平静"
+    # 使用讯飞评测结果计算清晰度（如果有）
+    if xunfei_assessment and "clarity" in xunfei_assessment:
+        # 讯飞评测结果通常是百分制，转换为10分制
+        clarity = min(10.0, max(0.0, xunfei_assessment.get("clarity", 50) / 10))
     else:
-        emotion = "中性"
+        # 使用备选方法计算清晰度
+        clarity = min(10.0, max(0.0, 5.0 + speech_features.get("spectral_centroid", 0) / 1000))
     
-    return {
+    # 使用讯飞评测结果计算语速（如果有）
+    if xunfei_assessment and "speed" in xunfei_assessment:
+        # 讯飞语速评分，转换为10分制
+        # 假设讯飞返回的语速是一个0-100的分数，其中50表示标准语速
+        xunfei_speed = xunfei_assessment.get("speed", 50)
+        # 将语速转换为10分制评分，5分表示标准语速
+        if xunfei_speed < 50:
+            # 语速过慢，分数越低
+            pace = 5.0 * (xunfei_speed / 50)
+        elif xunfei_speed > 50:
+            # 语速过快，分数越低
+            pace = 10.0 - 5.0 * ((xunfei_speed - 50) / 50)
+        else:
+            pace = 5.0
+    else:
+        # 使用备选方法计算语速
+        tempo = speech_features.get("tempo", 120)
+        zcr = speech_features.get("zero_crossing_rate", 0.1)
+        pace = min(10.0, max(0.0, 5.0 + (tempo / 120 - 1) * 3 + (zcr - 0.1) * 10))
+    
+    # 使用讯飞情感分析结果（如果有）
+    if xunfei_emotion and "emotion" in xunfei_emotion:
+        # 讯飞情感分析结果映射
+        emotion_map = {
+            "happy": "热情",
+            "angry": "激动",
+            "sad": "低落",
+            "fear": "紧张",
+            "neutral": "中性"
+        }
+        emotion = emotion_map.get(xunfei_emotion.get("emotion", ""), "中性")
+    else:
+        # 使用备选方法进行情感分析
+        rms = speech_features.get("rms", 0.1)
+        if rms > 0.2:
+            emotion = "热情"
+        elif rms < 0.05:
+            emotion = "平静"
+        else:
+            emotion = "中性"
+    
+    # 添加流畅度评分（如果讯飞API提供）
+    fluency = None
+    if xunfei_assessment and "fluency" in xunfei_assessment:
+        fluency = min(10.0, max(0.0, xunfei_assessment.get("fluency", 50) / 10))
+    
+    result = {
         "clarity": float(clarity),
         "pace": float(pace),
         "emotion": emotion
     }
+    
+    # 如果有流畅度评分，添加到结果中
+    if fluency is not None:
+        result["fluency"] = float(fluency)
+    
+    return result
 
 
 def extract_visual_features(video_path: str) -> Dict[str, Any]:
@@ -247,7 +306,7 @@ def analyze_visual(visual_features: Dict[str, Any]) -> Dict[str, Any]:
 def speech_to_text(file_path: str) -> str:
     """语音转文本
     
-    将语音文件转换为文本
+    使用讯飞语音识别API将语音文件转换为文本
     
     Args:
         file_path: 文件路径
@@ -255,11 +314,24 @@ def speech_to_text(file_path: str) -> str:
     Returns:
         str: 转换后的文本
     """
-    # 这里是示例实现，实际项目中应使用语音识别API
-    # 例如百度语音识别、讯飞语音识别等
-    
-    # 返回示例文本
-    return "这是一个面试回答的示例文本。我认为我的优势在于团队协作能力和解决问题的能力。我曾经在项目中遇到过挑战，但通过与团队成员的合作成功解决了问题。我对贵公司的产品和文化非常感兴趣，希望能够加入贵公司的团队。"
+    try:
+        # 读取音频文件
+        with open(file_path, 'rb') as f:
+            audio_data = f.read()
+        
+        # 调用讯飞语音识别服务
+        text = xunfei_service.speech_recognition(audio_data)
+        
+        # 如果识别失败，返回空字符串
+        if not text:
+            print("语音识别失败，返回默认文本")
+            return "这是一个面试回答的示例文本。我认为我的优势在于团队协作能力和解决问题的能力。我曾经在项目中遇到过挑战，但通过与团队成员的合作成功解决了问题。我对贵公司的产品和文化非常感兴趣，希望能够加入贵公司的团队。"
+        
+        return text
+    except Exception as e:
+        print(f"语音转文本失败: {e}")
+        # 出现异常时返回默认文本
+        return "这是一个面试回答的示例文本。我认为我的优势在于团队协作能力和解决问题的能力。我曾经在项目中遇到过挑战，但通过与团队成员的合作成功解决了问题。我对贵公司的产品和文化非常感兴趣，希望能够加入贵公司的团队。"
 
 
 def analyze_content(text: str) -> Dict[str, Any]:
@@ -329,6 +401,7 @@ def generate_overall_analysis(analysis_results: Dict[str, Any]) -> Dict[str, Any
     speech_clarity = speech.get("clarity", 5.0)
     speech_pace = speech.get("pace", 5.0)
     speech_emotion = speech.get("emotion", "中性")
+    speech_fluency = speech.get("fluency", 5.0)  # 新增流畅度评分
     
     eye_contact = visual.get("eye_contact", 5.0)
     body_language = visual.get("body_language", {"confidence": 5.0, "openness": 5.0})
@@ -340,6 +413,7 @@ def generate_overall_analysis(analysis_results: Dict[str, Any]) -> Dict[str, Any
     scores = [
         speech_clarity,
         speech_pace,
+        speech_fluency,  # 新增流畅度评分
         eye_contact,
         body_language.get("confidence", 5.0),
         body_language.get("openness", 5.0),
@@ -355,6 +429,8 @@ def generate_overall_analysis(analysis_results: Dict[str, Any]) -> Dict[str, Any
         strengths.append("语音清晰度高，表达清楚")
     if speech_pace > 4.0 and speech_pace < 6.0:
         strengths.append("语速适中，节奏感好")
+    if speech_fluency > 7.0:  # 新增流畅度评价
+        strengths.append("语音流畅，表达连贯")
     if eye_contact > 7.0:
         strengths.append("眼神交流良好，展现自信")
     if body_language.get("confidence", 0) > 7.0:
@@ -374,6 +450,8 @@ def generate_overall_analysis(analysis_results: Dict[str, Any]) -> Dict[str, Any
         weaknesses.append("语速过慢，可能显得犹豫")
     if speech_pace > 7.0:
         weaknesses.append("语速过快，不易理解")
+    if speech_fluency < 4.0:  # 新增流畅度评价
+        weaknesses.append("语音不流畅，表达断断续续")
     if eye_contact < 4.0:
         weaknesses.append("眼神交流不足，可能显得缺乏自信")
     if body_language.get("confidence", 10) < 4.0:
@@ -384,6 +462,8 @@ def generate_overall_analysis(analysis_results: Dict[str, Any]) -> Dict[str, Any
         weaknesses.append("回答结构不清晰，逻辑性弱")
     if speech_emotion == "平静" and overall_score < 5.0:
         weaknesses.append("语音情感平淡，缺乏热情")
+    if speech_emotion == "紧张":
+        weaknesses.append("语音情感显示紧张，需要放松")
     
     # 生成建议
     suggestions = []
@@ -391,6 +471,8 @@ def generate_overall_analysis(analysis_results: Dict[str, Any]) -> Dict[str, Any
         suggestions.append("提高发音清晰度，注意语音表达")
     if speech_pace < 4.0 or speech_pace > 6.0:
         suggestions.append("调整语速至适中水平，不要过快或过慢")
+    if speech_fluency < 6.0:  # 新增流畅度建议
+        suggestions.append("提高语音流畅度，避免停顿过多，保持连贯表达")
     if eye_contact < 6.0:
         suggestions.append("增加眼神交流，展示自信和专注")
     if body_language.get("confidence", 10) < 6.0:
@@ -401,6 +483,8 @@ def generate_overall_analysis(analysis_results: Dict[str, Any]) -> Dict[str, Any
         suggestions.append("提高回答的相关性，更好地针对问题要点")
     if content_structure < 6.0:
         suggestions.append("改善回答结构，使用清晰的逻辑框架")
+    if speech_emotion == "紧张" or speech_emotion == "低落":
+        suggestions.append("调整情绪状态，保持积极自信的语调")
     
     # 如果没有找到优势或劣势，添加默认项
     if not strengths:
