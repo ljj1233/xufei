@@ -2,10 +2,9 @@ from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List, Dict, Any, Union, ForwardRef
 from datetime import datetime
 import json
+from app.models.job_position import JobPosition, TechField, PositionType
 
-# 解决前向引用问题
-Analysis = ForwardRef('Analysis')
-JobPosition = ForwardRef('JobPosition')
+
 
 # 用户相关模型
 class UserBase(BaseModel):
@@ -26,6 +25,7 @@ class UserInDB(UserBase):
     
     class Config:
         from_attributes = True
+        arbitrary_types_allowed = True
 
 class User(UserInDB):
     """用户响应模型"""
@@ -53,13 +53,14 @@ class InterviewInDB(InterviewBase):
     
     class Config:
         from_attributes = True
+        arbitrary_types_allowed = True
 
 class Interview(InterviewInDB):
     """面试响应模型"""
     # 添加与分析结果的关系
-    analysis: Optional[Analysis] = None
+    analysis: Optional["Analysis"] = None
     # 添加与职位的关系
-    job_position: Optional[JobPosition] = None
+    job_position: Optional["JobPosition"] = None
 
 # 分析结果相关模型
 class AnalysisBase(BaseModel):
@@ -119,6 +120,7 @@ class AnalysisInDB(AnalysisBase):
     
     class Config:
         from_attributes = True
+        arbitrary_types_allowed = True
 
 class Analysis(AnalysisInDB):
     """分析结果响应模型"""
@@ -174,6 +176,11 @@ class Analysis(AnalysisInDB):
         except (json.JSONDecodeError, TypeError):
             return None
 
+# 在所有模型定义后添加重建方法
+Analysis.model_rebuild()
+JobPosition.model_rebuild()
+Interview.model_rebuild()
+
 # 文件上传响应
 class FileUploadResponse(BaseModel):
     """文件上传响应"""
@@ -220,6 +227,8 @@ class JobPositionInDB(JobPositionBase):
     
     class Config:
         from_attributes = True
+        arbitrary_types_allowed = True
+        arbitrary_types_allowed = True
 
 class JobPosition(JobPositionInDB):
     """职位响应模型"""
