@@ -3,18 +3,18 @@ from sqlalchemy.orm import Session
 from typing import Any, List, Optional
 from app.core.auth import get_current_user
 from app.db.base import get_db
-from app.models.user import User
-from app.models.job_position import JobPosition, TechField, PositionType
-from app.models.schemas import JobPositionCreate, JobPosition as JobPositionSchema
+from app.db.models import User as DBUser
+from app.db.job_position import JobPosition as JobPositionSchema
+from app.models import schemas, TechField, PositionType
 import json
 
 router = APIRouter()
 
 # 创建职位
-@router.post("", response_model=JobPositionSchema)
+@router.post("", response_model=schemas.JobPosition)
 async def create_job_position(
-    job_position: JobPositionCreate,
-    current_user: User = Depends(get_current_user),
+    job_position: schemas.JobPositionCreate,
+    current_user: DBUser = Depends(get_current_user),
     db: Session = Depends(get_db)
 ) -> Any:
     # 检查用户权限（可选，如果只允许管理员创建职位）
@@ -25,7 +25,7 @@ async def create_job_position(
         )
     
     # 创建职位记录
-    db_job_position = JobPosition(
+    db_job_position = JobPositionSchema(
         title=job_position.title,
         tech_field=job_position.tech_field,
         position_type=job_position.position_type,
@@ -41,13 +41,13 @@ async def create_job_position(
     return db_job_position
 
 # 获取所有职位
-@router.get("", response_model=List[JobPositionSchema])
+@router.get("", response_model=List[schemas.JobPosition])
 async def get_job_positions(
     db: Session = Depends(get_db),
     skip: int = 0,
     limit: int = 100
 ) -> Any:
-    job_positions = db.query(JobPosition).offset(skip).limit(limit).all()
+    job_positions = db.query(JobPositionSchema).offset(skip).limit(limit).all()
     return job_positions
 
 # 获取单个职位详情

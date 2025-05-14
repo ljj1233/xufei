@@ -6,7 +6,8 @@ from typing import List, Optional
 import cv2
 
 from app.db.database import get_db
-from app.db.models import Interview, User
+from app.db.models import Interview as DBInterview, User
+from app.models.user import User
 from app.models import schemas
 from app.core.config import settings
 from app.utils.auth import get_current_active_user
@@ -69,7 +70,7 @@ async def upload_interview_file(
             print(f"获取视频时长失败: {e}")
     
     # 创建面试记录
-    db_interview = Interview(
+    db_interview = DBInterview(
         title=title,
         description=description,
         file_path=file_path,
@@ -105,7 +106,7 @@ def read_interviews(
     Returns:
         List[Interview]: 面试记录列表
     """
-    interviews = db.query(Interview).filter(Interview.user_id == current_user.id).offset(skip).limit(limit).all()
+    interviews = db.query(DBInterview).filter(DBInterview.user_id == current_user.id).offset(skip).limit(limit).all()
     return interviews
 
 

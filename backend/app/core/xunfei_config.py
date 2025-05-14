@@ -17,5 +17,6 @@ class XunFeiSettings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = True
+        extra = "allow"  # 允许额外字段
 
 xunfei_settings = XunFeiSettings()

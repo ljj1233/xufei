@@ -5,8 +5,8 @@ from app.core.auth import get_current_user
 from app.db.base import get_db
 from app.models.user import User
 from app.models.job_position import JobPosition, TechField, PositionType
-from app.models.schemas import JobPositionCreate, JobPosition as JobPositionSchema
 import json
+from app.db.job_position import JobPosition as JobPositionSchema, JobPositionCreate
 
 router = APIRouter()
 

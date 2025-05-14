@@ -8,6 +8,11 @@ from app.db.models import User
 from app.models import schemas
 from app.utils.auth import verify_password, get_password_hash, create_access_token
 from app.core.config import settings
+from app.utils.auth import get_current_active_user
+from fastapi.security import OAuth2PasswordBearer
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/users/login")
+
 
 router = APIRouter()
 

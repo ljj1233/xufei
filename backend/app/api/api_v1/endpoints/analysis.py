@@ -4,7 +4,7 @@ import json
 from typing import Dict, Any
 
 from app.db.database import get_db
-from app.db.models import Interview, InterviewAnalysis, User
+from app.db.models import Interview as DBInterview, InterviewAnalysis as DBAnalysis, User as DBUser
 from app.models import schemas
 from app.utils.auth import get_current_active_user
 from app.services.analysis import analyze_interview
@@ -16,7 +16,7 @@ router = APIRouter()
 def create_interview_analysis(
     interview_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: DBUser = Depends(get_current_active_user)
 ):
     """创建面试分析
     
@@ -31,7 +31,7 @@ def create_interview_analysis(
         Analysis: 分析结果
     """
     # 检查面试是否存在
-    interview = db.query(Interview).filter(Interview.id == interview_id).first()
+    interview = db.query(DBInterview).filter(DBInterview.id == interview_id).first()
     if not interview:
         raise HTTPException(status_code=404, detail="面试记录不存在")
     
@@ -40,7 +40,7 @@ def create_interview_analysis(
         raise HTTPException(status_code=403, detail="没有权限分析此面试")
     
     # 检查是否已有分析结果
-    existing_analysis = db.query(InterviewAnalysis).filter(InterviewAnalysis.interview_id == interview_id).first()
+    existing_analysis = db.query(DBAnalysis).filter(DBAnalysis.interview_id == interview_id).first()
     if existing_analysis:
         return existing_analysis
     
@@ -83,7 +83,7 @@ def create_interview_analysis(
 def get_interview_analysis(
     interview_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: DBUser = Depends(get_current_active_user)
 ):
     """获取面试分析结果
     
@@ -98,7 +98,7 @@ def get_interview_analysis(
         Analysis: 分析结果
     """
     # 检查面试是否存在
-    interview = db.query(Interview).filter(Interview.id == interview_id).first()
+    interview = db.query(DBInterview).filter(DBInterview.id == interview_id).first()
     if not interview:
         raise HTTPException(status_code=404, detail="面试记录不存在")
     

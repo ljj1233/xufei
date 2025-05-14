@@ -32,7 +32,7 @@ async def upload_interview(
     file: UploadFile = File(...),
     title: str = Form(...),
     description: Optional[str] = Form(None),
-    current_user: User = Depends(get_current_user),
+    current_user: DBUser = Depends(get_current_user),
     db: Session = Depends(get_db)
 ) -> Any:
     # 检查文件类型

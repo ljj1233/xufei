@@ -51,8 +51,18 @@
 │   │   │       ├── endpoints/  # 各模块API端点 (例如: interviews.py, users.py, analysis.py)
 │   │   │       └── api.py      # API路由聚合
 │   │   ├── core/               # 核心配置 (例如: config.py, xunfei_config.py)
-│   │   ├── db/                 # 数据库相关 (例如: database.py, models.py - SQLAlchemy模型)
+│   │   ├── db/                 # 数据库相关
+│   │   │   ├── database.py     # 数据库连接
+│   │   │   ├── base.py         # 基础类
+│   │   │   ├── models.py       # SQLAlchemy数据库模型
+│   │   │   └── job_position.py # 职位相关模型
 │   │   ├── models/             # Pydantic模型 (用于数据校验和序列化)
+│   │   │   ├── __init__.py     # 模型导入管理
+│   │   │   ├── schemas.py      # 数据验证和序列化模型
+│   │   │   ├── user.py         # 用户模型
+│   │   │   ├── interview.py    # 面试模型
+│   │   │   ├── analysis.py     # 分析模型
+│   │   │   └── job_position.py # 职位模型
 │   │   ├── services/           # 业务逻辑服务 (例如: xunfei_service.py, analysis_service.py)
 │   │   ├── utils/              # 工具函数
 │   │   └── main.py             # FastAPI应用入口
@@ -87,9 +97,31 @@
 └── README.md                   # 本文件
 ```
 
-## 3. 安装与部署
+## 3. 代码结构说明
 
-### 3.1 环境要求与准备
+### 3.1 模型导入结构
+
+为避免循环导入问题，项目采用了以下导入策略：
+
+- **数据库模型**：在`app/db/`目录下定义SQLAlchemy数据库模型
+- **Pydantic模型**：在`app/models/`目录下定义用于API请求和响应的Pydantic模型
+- **导入顺序**：
+  - 先导入基础枚举类型（如`TechField`、`PositionType`）
+  - 然后导入数据模型（如`User`、`JobPosition`、`Interview`、`Analysis`）
+  - 最后导入schemas模型
+- **前向引用**：使用`ForwardRef`处理循环引用关系
+- **命名区分**：在API端点中，使用`DBUser`、`DBInterview`等别名区分数据库模型和Pydantic模型
+
+### 3.2 API端点结构
+
+- **用户API**：用户注册、登录、个人信息管理
+- **面试API**：面试文件上传、面试记录管理
+- **分析API**：面试分析请求、分析结果获取
+- **职位API**：职位信息管理
+
+## 4. 安装与部署
+
+### 4.1 环境要求与准备
 
 - **Python**: 3.8或更高版本。
 - **Node.js**: 16.0或更高版本（用于前端开发）。
