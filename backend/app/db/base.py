@@ -5,7 +5,7 @@ from app.core.config import settings
 
 # 创建数据库引擎
 engine = create_engine(
-    settings.SQLALCHEMY_DATABASE_URI,
+    settings.DATABASE_URI,  # 修改为 DATABASE_URI
     pool_pre_ping=True,
     echo=settings.DB_ECHO
 )

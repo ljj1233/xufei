@@ -1,6 +1,10 @@
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 import os
+import sys
+from pathlib import Path
+
+sys.path.append(str(Path(__file__).parent.resolve()))
 
 from app.core.config import settings
 from app.api.api_v1.api import api_router

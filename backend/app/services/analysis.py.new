@@ -1,0 +1,46 @@
+# backend/app/services/analysis.py.new
+
+from typing import Dict, Any
+import os
+
+# 导入AI智能体库
+from ai_agent.core.agent import InterviewAgent
+
+# 初始化智能体
+agent = InterviewAgent()
+
+def analyze_interview(file_path: str, file_type: str) -> Dict[str, Any]:
+    """
+    分析面试视频/音频
+    
+    使用AI智能体库对面试文件进行多模态分析
+    
+    Args:
+        file_path: 文件路径
+        file_type: 文件类型（video或audio）
+        
+    Returns:
+        Dict[str, Any]: 分析结果
+    """
+    # 检查文件是否存在
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"文件不存在: {file_path}")
+    
+    # 调用智能体进行分析
+    result = agent.analyze(
+        file_path=file_path,
+        file_type=file_type
+    )
+    
+    # 转换为后端所需的数据格式
+    return {
+        "speech": result.get_speech_analysis(),
+        "visual": result.get_visual_analysis() if file_type == "video" else {},
+        "content": result.get_content_analysis(),
+        "overall": {
+            "score": result.get_overall_score(),
+            "strengths": result.get_strengths(),
+            "weaknesses": result.get_weaknesses(),
+            "suggestions": result.get_suggestions()
+        }
+    }
