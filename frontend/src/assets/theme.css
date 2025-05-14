@@ -1,0 +1,280 @@
+/* 多模态面试评测智能体 - 主题样式 */
+
+/* 全局变量 */
+:root {
+  --primary-color: #1E88E5;
+  --primary-light: #64B5F6;
+  --primary-dark: #0D47A1;
+  --success-color: #4CAF50;
+  --warning-color: #FF9800;
+  --danger-color: #F44336;
+  --text-primary: #333333;
+  --text-secondary: #666666;
+  --text-light: #999999;
+  --bg-light: #F5F7FA;
+  --bg-white: #FFFFFF;
+  --border-color: #E0E0E0;
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.1);
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --transition: all 0.3s ease;
+  --font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑', Arial, sans-serif;
+}
+
+/* 全局样式增强 */
+body {
+  font-family: var(--font-family);
+  color: var(--text-primary);
+  background-color: var(--bg-light);
+  line-height: 1.6;
+}
+
+/* 布局容器 */
+.app-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 页面容器 */
+.page-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+  width: 100%;
+}
+
+/* 页面标题 */
+.page-title {
+  font-size: 2rem;
+  font-weight: 600;
+  color: var(--primary-dark);
+  margin-bottom: 1.5rem;
+  position: relative;
+  padding-bottom: 0.5rem;
+}
+
+.page-title::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 60px;
+  height: 4px;
+  background-color: var(--primary-color);
+  border-radius: 2px;
+}
+
+/* 卡片样式增强 */
+.el-card {
+  border: none;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition);
+  margin-bottom: 1.5rem;
+}
+
+.el-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.el-card__header {
+  padding: 1.25rem 1.5rem;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.el-card__body {
+  padding: 1.5rem;
+}
+
+/* 特色卡片 */
+.feature-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.feature-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.feature-header .el-icon {
+  font-size: 1.5rem;
+  color: var(--primary-color);
+}
+
+.feature-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+/* 表单样式增强 */
+.el-form-item__label {
+  font-weight: 500;
+}
+
+.el-input__inner,
+.el-textarea__inner {
+  border-radius: var(--radius-sm);
+}
+
+.el-input__inner:focus,
+.el-textarea__inner:focus {
+  border-color: var(--primary-color);
+}
+
+/* 按钮样式增强 */
+.el-button {
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+  transition: var(--transition);
+}
+
+.el-button--primary {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.el-button--primary:hover,
+.el-button--primary:focus {
+  background-color: var(--primary-dark);
+  border-color: var(--primary-dark);
+}
+
+.el-button--success {
+  background-color: var(--success-color);
+  border-color: var(--success-color);
+}
+
+/* 上传组件样式 */
+.upload-container {
+  background-color: var(--bg-white);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  box-shadow: var(--shadow-md);
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.upload-area {
+  border: 2px dashed var(--primary-light);
+  border-radius: var(--radius-md);
+  padding: 2rem;
+  text-align: center;
+  background-color: rgba(30, 136, 229, 0.05);
+  transition: var(--transition);
+}
+
+.upload-area:hover {
+  border-color: var(--primary-color);
+  background-color: rgba(30, 136, 229, 0.1);
+}
+
+.upload-icon {
+  font-size: 3rem;
+  color: var(--primary-color);
+  margin-bottom: 1rem;
+}
+
+/* 结果页面样式 */
+.result-card {
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition: var(--transition);
+  cursor: pointer;
+}
+
+.result-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+
+.result-header {
+  padding: 1rem;
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.result-body {
+  padding: 1.5rem;
+}
+
+.score-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 50px;
+  font-weight: 600;
+  color: white;
+  background-color: var(--primary-color);
+}
+
+/* 雷达图容器 */
+.radar-chart-container {
+  height: 300px;
+  margin: 2rem 0;
+}
+
+/* 改进建议列表 */
+.suggestion-list {
+  margin-top: 1.5rem;
+}
+
+.suggestion-item {
+  padding: 1rem;
+  border-left: 4px solid var(--primary-color);
+  background-color: rgba(30, 136, 229, 0.05);
+  margin-bottom: 1rem;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .page-title {
+    font-size: 1.75rem;
+  }
+  
+  .upload-container,
+  .page-container {
+    padding: 1.5rem 1rem;
+  }
+  
+  .el-card__header {
+    padding: 1rem;
+  }
+  
+  .el-card__body {
+    padding: 1.25rem;
+  }
+}
+
+/* 动画效果 */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+  animation: fadeIn 0.5s ease-out;
+}
+
+/* 加载动画 */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 0;
+}
+
+.loading-text {
+  margin-top: 1rem;
+  color: var(--primary-color);
+  font-weight: 500;
+}

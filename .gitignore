@@ -3,3 +3,9 @@
 *.pdf
 *.zip
 *.rar
+
+.env
+*.env.local
+*.env.testing
+*.json
+__pycache__

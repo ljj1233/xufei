@@ -1,0 +1,26 @@
+# ai_agent/requirements.txt
+
+# 基础依赖
+numpy>=1.19.0
+pandas>=1.1.0
+
+# 音频处理
+librosa>=0.8.0
+soundfile>=0.10.0
+
+# 视觉处理
+opencv-python>=4.5.0
+
+# 深度学习
+torch>=1.7.0
+transformers>=4.5.0
+
+# API调用
+requests>=2.25.0
+
+# 工具库
+tqdm>=4.50.0
+matplotlib>=3.3.0
+
+# 测试工具
+pytest>=6.0.0

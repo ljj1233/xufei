@@ -3,6 +3,10 @@ from typing import Optional, List, Dict, Any, Union, ForwardRef
 from datetime import datetime
 import json
 
+# 解决前向引用问题
+Analysis = ForwardRef('Analysis')
+JobPosition = ForwardRef('JobPosition')
+
 # 用户相关模型
 class UserBase(BaseModel):
     """用户基础模型"""
@@ -21,7 +25,7 @@ class UserInDB(UserBase):
     created_at: datetime
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class User(UserInDB):
     """用户响应模型"""
@@ -48,14 +52,14 @@ class InterviewInDB(InterviewBase):
     job_position_id: Optional[int] = None
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class Interview(InterviewInDB):
     """面试响应模型"""
     # 添加与分析结果的关系
-    analysis: Optional['Analysis'] = None
+    analysis: Optional[Analysis] = None
     # 添加与职位的关系
-    job_position: Optional['JobPosition'] = None
+    job_position: Optional[JobPosition] = None
 
 # 分析结果相关模型
 class AnalysisBase(BaseModel):
@@ -114,7 +118,7 @@ class AnalysisInDB(AnalysisBase):
     updated_at: datetime
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class Analysis(AnalysisInDB):
     """分析结果响应模型"""
@@ -215,7 +219,7 @@ class JobPositionInDB(JobPositionBase):
     updated_at: Optional[datetime] = None
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class JobPosition(JobPositionInDB):
     """职位响应模型"""

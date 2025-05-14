@@ -1,0 +1,103 @@
+/* 全局样式 */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑', Arial, sans-serif;
+  font-size: 16px;
+  color: #333;
+  line-height: 1.5;
+  background-color: #f5f7fa;
+}
+
+a {
+  color: #1E88E5;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* 通用卡片样式 */
+.card {
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+  background-color: #ffffff;
+  box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
+  margin-bottom: 1rem;
+}
+
+/* 页面标题样式 */
+.page-title {
+  font-size: 2rem;
+  color: #1E88E5;
+  margin-bottom: 1.5rem;
+}
+
+/* 分数卡片样式 */
+.score-card {
+  text-align: center;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.score-value {
+  font-size: 2.5rem;
+  font-weight: bold;
+}
+
+.score-label {
+  font-size: 1rem;
+  color: #616161;
+}
+
+.good-score {
+  background-color: #E8F5E9;
+  color: #2E7D32;
+}
+
+.medium-score {
+  background-color: #FFF8E1;
+  color: #F57F17;
+}
+
+.bad-score {
+  background-color: #FFEBEE;
+  color: #C62828;
+}
+
+/* 上传区域样式 */
+.upload-area {
+  border: 2px dashed #1E88E5;
+  border-radius: 0.5rem;
+  padding: 2rem;
+  text-align: center;
+  margin-bottom: 1rem;
+  background-color: #f8f9fa;
+}
+
+/* 表单样式 */
+.form-container {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* 响应式布局 */
+@media (max-width: 768px) {
+  .el-header {
+    padding: 0 10px;
+  }
+  
+  .logo h1 {
+    font-size: 1.2rem;
+  }
+  
+  .el-main {
+    padding: 10px;
+  }
+}
