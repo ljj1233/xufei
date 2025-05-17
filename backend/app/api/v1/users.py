@@ -33,13 +33,14 @@ class Token(BaseModel):
 async def register(user_in: UserCreate, db: Session = Depends(get_db)) -> Any:
     # 检查用户名是否已存在
     logging.debug(f"尝试注册用户: {user_in.username}")
+    print(f"尝试注册用户: {user_in.username}")
     if db.query(User).filter(User.username == user_in.username).first():
         logging.warning(f"用户名已存在: {user_in.username}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="用户名已被注册"
         )
-    
+    print(f"尝试注册邮箱: {user_in.email}")
     # 检查邮箱是否已存在
     if db.query(User).filter(User.email == user_in.email).first():
         raise HTTPException(
@@ -65,7 +66,7 @@ async def register(user_in: UserCreate, db: Session = Depends(get_db)) -> Any:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="注册过程中发生错误"
         )
-    
+    print(f"用户注册成功: {user.username} (ID: {user.id})")
     # 生成访问令牌
     access_token = create_access_token(data={"sub": str(user.id)})
     return {"access_token": access_token, "token_type": "bearer"}

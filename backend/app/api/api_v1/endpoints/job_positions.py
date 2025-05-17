@@ -2,11 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import Any, List, Optional
 from app.core.auth import get_current_user
-from app.db.base import get_db
-from app.db.models import User as DBUser
-from app.db.job_position import JobPosition as JobPositionSchema
+from app.db.database import get_db
+from app.models.job_position import JobPosition
 from app.models import schemas, TechField, PositionType
 import json
+from app.models.user import User as DBUser
 
 router = APIRouter()
 

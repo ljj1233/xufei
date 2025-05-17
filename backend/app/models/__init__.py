@@ -2,7 +2,7 @@
 from .user import User
 from .job_position import JobPosition, TechField, PositionType
 from .interview import Interview
-from .analysis import Analysis
+from .analysis import Analysis, InterviewAnalysis
 
 __all__ = [
     'User',

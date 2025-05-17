@@ -70,9 +70,11 @@ def get_db():
     while retry_count < max_retries:
         try:
             db = SessionLocal()
+            print("hello")
             # 测试连接是否有效
-            db.execute(text("SELECT 1"))
-            logger.debug("数据库会话创建成功")
+            # db.execute(text("SELECT 1"))
+            # logger.debug("数据库会话创建成功")
+            print("数据库会话创建成功")
             try:
                 yield db
             finally:

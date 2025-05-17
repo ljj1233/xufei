@@ -14,9 +14,6 @@ class XunFeiSettings(BaseSettings):
     # 情感分析服务配置
     XUNFEI_EMOTION_URL: str = "https://api.xfyun.cn/v1/service/v1/emotion"
     
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
-        extra = "allow"  # 允许额外字段
+    model_config = dict(env_file=".env", case_sensitive=True, extra="allow")
 
 xunfei_settings = XunFeiSettings()

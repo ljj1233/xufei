@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, ClassVar
 import os
 from dotenv import load_dotenv
 
@@ -29,9 +29,9 @@ class Settings(BaseSettings):
     DB_ECHO: bool = False  # 控制是否打印SQL语句，默认关闭
 
     # 数据库连接池配置
-    DB_POOL_SIZE: int = os.getenv("DB_POOL_SIZE", 5)
-    DB_MAX_OVERFLOW: int = os.getenv("DB_MAX_OVERFLOW", 10)
-    DB_POOL_TIMEOUT: int = os.getenv("DB_POOL_TIMEOUT", 30)
+    DB_POOL_SIZE: ClassVar[int] = 20  # 增大连接池大小，原默认值可能为5
+    DB_MAX_OVERFLOW: ClassVar[int] = 20  # 增大最大溢出连接数，原默认值可能为5
+    DB_POOL_TIMEOUT: ClassVar[int] = 30  # 增大连接池等待超时时间，单位秒
     
     # 安全配置
     SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-here")
@@ -48,8 +48,7 @@ class Settings(BaseSettings):
     # 模型配置
     TEXT_MODEL: str = "bert-base-chinese"
     
-    class Config:
-        case_sensitive = True
+    model_config = dict(case_sensitive=True)
     
     def __init__(self, **data: Any):
         super().__init__(**data)

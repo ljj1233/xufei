@@ -4,7 +4,9 @@ import json
 from typing import Dict, Any
 
 from app.db.database import get_db
-from app.db.models import Interview as DBInterview, InterviewAnalysis as DBAnalysis, User as DBUser
+from app.models.interview import Interview as DBInterview
+from app.models.analysis import InterviewAnalysis as DBAnalysis
+from app.models.user import User as DBUser
 from app.models import schemas
 from app.utils.auth import get_current_active_user
 from app.services.analysis import analyze_interview

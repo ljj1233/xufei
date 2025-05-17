@@ -2,9 +2,15 @@ import pytest
 import os
 import json
 from unittest.mock import patch, MagicMock
+from fastapi.testclient import TestClient
 from app.services.xunfei_service import XunfeiService
 from app.services.analysis_service import AnalysisService
 from app.core.config import settings
+from app.db.database import Base, get_db
+from app.main import app as original_app
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 # 测试讯飞服务
 class TestXunfeiService:
@@ -36,7 +42,9 @@ class TestXunfeiService:
         mock_post.return_value = mock_response
         
         # 调用语音识别服务
-        result = self.xunfei_service.speech_recognition(self.test_audio_path)
+        with open(self.test_audio_path, "rb") as f:
+            audio_data = f.read()
+        result = self.xunfei_service.speech_recognition(audio_data)
         
         # 验证结果
         assert result == "这是一段测试语音识别的文本。"
@@ -61,7 +69,9 @@ class TestXunfeiService:
         mock_post.return_value = mock_response
         
         # 调用语音评测服务
-        result = self.xunfei_service.speech_assessment(self.test_audio_path, "这是一段测试语音评测的文本。")
+        with open(self.test_audio_path, "rb") as f:
+            audio_data = f.read()
+        result = self.xunfei_service.speech_assessment(audio_data)
         
         # 验证结果
         assert "fluency" in result
@@ -91,7 +101,9 @@ class TestXunfeiService:
         mock_post.return_value = mock_response
         
         # 调用情感分析服务
-        result = self.xunfei_service.emotion_analysis("这是一段测试情感分析的文本。")
+        with open(self.test_audio_path, "rb") as f:
+            audio_data = f.read()
+        result = self.xunfei_service.emotion_analysis(audio_data)
         
         # 验证结果
         assert "positive" in result
@@ -163,3 +175,31 @@ class TestAnalysisService:
         self.mock_xunfei_service.speech_recognition.assert_called_once_with(self.test_audio_path)
         self.mock_xunfei_service.speech_assessment.assert_called_once()
         self.mock_xunfei_service.emotion_analysis.assert_called_once()
+
+
+@pytest.fixture(scope="function")
+def test_db():
+    from .conftest import test_db as _test_db
+    yield from _test_db()
+
+
+@pytest.fixture(scope="function")
+def client(test_db):
+    app = original_app
+    def override_get_db():
+        try:
+            yield test_db
+        finally:
+            test_db.rollback()
+    app.dependency_overrides[get_db] = override_get_db
+    return TestClient(app)
+
+
+def test_register_and_login(client):
+    user = {"username": "serviceuser", "email": "serviceuser@example.com", "password": "Test@123456"}
+    r = client.post(f"{settings.API_V1_STR}/users/register", json=user)
+    assert r.status_code in (200, 201)
+    login_data = {"username": "serviceuser", "password": "Test@123456"}
+    r2 = client.post(f"{settings.API_V1_STR}/users/login", data=login_data)
+    assert r2.status_code == 200
+    assert "access_token" in r2.json()

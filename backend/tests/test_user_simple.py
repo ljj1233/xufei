@@ -2,19 +2,33 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
-from app.db.base import Base, get_db
+from app.db.database import Base, get_db
 from app.main import app as original_app
 from app.core.config import settings
+from app.api.api_v1.api import api_router
+from pydantic import BaseModel, ConfigDict
+from sqlalchemy import create_engine, text, Column, Integer, DateTime
+from sqlalchemy.orm import DeclarativeBase, declared_attr
+from app.core.config import settings
+import logging
+
+
+# PostgreSQL 测试数据库连接字符串
+TEST_DATABASE_URL = (
+    f"postgresql://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}"
+    f"@{settings.POSTGRES_SERVER}:{settings.POSTGRES_PORT}/interview_analysis_test"
+)
 
 @pytest.fixture(scope="function")
 def test_db():
     engine = create_engine(
-        "sqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool
+        TEST_DATABASE_URL,
+        connect_args={"options": "-c timezone=Asia/Shanghai"}
     )
-    Base.metadata.drop_all(engine)
+    with engine.connect() as conn:
+        conn.execute(text("DROP SCHEMA public CASCADE;"))
+        conn.execute(text("CREATE SCHEMA public;"))
+        conn.commit()
     Base.metadata.create_all(engine)
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     db = TestingSessionLocal()
@@ -32,6 +46,7 @@ def client(test_db):
             test_db.rollback()
     app.dependency_overrides[get_db] = override_get_db
     return TestClient(app)
+
 
 def test_register_and_login(client):
     user = {"username": "user1", "email": "user1@example.com", "password": "12345678Aa!"}

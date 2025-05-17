@@ -6,8 +6,9 @@ from typing import List, Optional
 import cv2
 
 from app.db.database import get_db
-from app.db.models import Interview as DBInterview, InterviewAnalysis as DBAnalysis, User as DBUser
-from app.models.user import User
+from app.models.interview import Interview as DBInterview
+from app.models.analysis import InterviewAnalysis as DBAnalysis
+from app.models.user import User as DBUser
 from app.models import schemas
 from app.core.config import settings
 from app.utils.auth import get_current_active_user
@@ -128,7 +129,7 @@ def read_interview(
     Returns:
         Interview: 面试记录
     """
-    interview = db.query(Interview).filter(Interview.id == interview_id).first()
+    interview = db.query(DBInterview).filter(DBInterview.id == interview_id).first()
     if not interview:
         raise HTTPException(status_code=404, detail="面试记录不存在")
     if interview.user_id != current_user.id and not current_user.is_admin:
@@ -151,7 +152,7 @@ def delete_interview(
         db: 数据库会话
         current_user: 当前用户
     """
-    interview = db.query(Interview).filter(Interview.id == interview_id).first()
+    interview = db.query(DBInterview).filter(DBInterview.id == interview_id).first()
     if not interview:
         raise HTTPException(status_code=404, detail="面试记录不存在")
     if interview.user_id != current_user.id and not current_user.is_admin:

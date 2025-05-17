@@ -21,9 +21,7 @@ class InterviewInDB(InterviewBase):
     user_id: int
     job_position_id: Optional[int] = None
     
-    class Config:
-        from_attributes = True
-        arbitrary_types_allowed = True
+    model_config = dict(from_attributes=True, arbitrary_types_allowed=True)
 
 class Interview(InterviewInDB):
     """面试响应模型"""
