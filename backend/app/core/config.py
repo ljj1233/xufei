@@ -20,13 +20,26 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: str = os.getenv("POSTGRES_PASSWORD", "postgres")
     POSTGRES_DB: str = os.getenv("POSTGRES_DB", "interview_analysis")
     POSTGRES_PORT: str = os.getenv("POSTGRES_PORT", "5432")
+    
+    # 服务器配置
+    SERVER_HOST: str = os.getenv("SERVER_HOST", "0.0.0.0")
+    SERVER_PORT: int = os.getenv("SERVER_PORT", 8000)
+    
     DATABASE_URI: Optional[str] = None
     DB_ECHO: bool = False  # 控制是否打印SQL语句，默认关闭
 
+    # 数据库连接池配置
+    DB_POOL_SIZE: int = os.getenv("DB_POOL_SIZE", 5)
+    DB_MAX_OVERFLOW: int = os.getenv("DB_MAX_OVERFLOW", 10)
+    DB_POOL_TIMEOUT: int = os.getenv("DB_POOL_TIMEOUT", 30)
+    
     # 安全配置
     SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-here")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8  # 8 days
-    
+
+    # 日志配置
+    LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
+    LOG_FILE: str = os.getenv("LOG_FILE", "logs/app.log")
     # 多模态处理配置
     UPLOAD_FOLDER: str = "uploads"
     ALLOWED_EXTENSIONS: List[str] = ["mp4", "avi", "mov", "mp3", "wav"]

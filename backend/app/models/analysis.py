@@ -1,10 +1,11 @@
 from sqlalchemy import Column, Integer, Float, String, DateTime, ForeignKey, JSON
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
-from app.db.base import Base
+from app.db.database import Base
 
 class Analysis(Base):
     __tablename__ = "analyses"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     interview_id = Column(Integer, ForeignKey("interviews.id"), unique=True, nullable=False)

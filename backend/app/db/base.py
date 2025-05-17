@@ -1,25 +1,21 @@
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-from app.core.config import settings
+# 统一从database.py导入数据库相关组件
+from app.db.database import engine, Base, get_db, SessionLocal
+from app.models.user import User
+from app.models.job_position import JobPosition
+from app.models.interview import Interview
+from app.models.analysis import Analysis
 
-# 创建数据库引擎
-engine = create_engine(
-    settings.DATABASE_URI,  # 修改为 DATABASE_URI
-    pool_pre_ping=True,
-    echo=settings.DB_ECHO
-)
+# 此文件仅用于向后兼容，所有数据库相关组件应从database.py导入
+# 避免重复定义数据库连接和会话，防止连接池冲突
 
-# 创建会话工厂
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-# 声明基类
-Base = declarative_base()
-
-# 获取数据库会话
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+# 导出所有组件，保持API兼容性
+__all__ = [
+    'engine',
+    'Base',
+    'get_db',
+    'SessionLocal',
+    'User',
+    'JobPosition',
+    'Interview',
+    'Analysis',
+]

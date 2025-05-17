@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
 from typing import Optional
 from datetime import datetime
 
@@ -17,10 +17,7 @@ class UserInDB(UserBase):
     is_active: bool
     is_admin: bool
     created_at: datetime
-    
-    class Config:
-        from_attributes = True
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(from_attributes=True, arbitrary_types_allowed=True)
 
 class User(UserInDB):
     """用户响应模型"""

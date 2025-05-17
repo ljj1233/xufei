@@ -72,7 +72,7 @@ async def upload_interview(
 
 # 获取用户的所有面试记录
 @router.get("", response_model=list[InterviewResponse])
-async def get_interviews(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> Any:
+async def get_interviews(current_user: DBUser = Depends(get_current_user), db: Session = Depends(get_db)) -> Any:
     interviews = db.query(Interview).filter(Interview.user_id == current_user.id).all()
     return interviews
 
@@ -80,7 +80,7 @@ async def get_interviews(current_user: User = Depends(get_current_user), db: Ses
 @router.get("/{interview_id}", response_model=InterviewResponse)
 async def get_interview(
     interview_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: DBUser = Depends(get_current_user),
     db: Session = Depends(get_db)
 ) -> Any:
     interview = db.query(Interview).filter(
@@ -100,7 +100,7 @@ async def get_interview(
 @router.delete("/{interview_id}")
 async def delete_interview(
     interview_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: DBUser = Depends(get_current_user),
     db: Session = Depends(get_db)
 ) -> Any:
     interview = db.query(Interview).filter(

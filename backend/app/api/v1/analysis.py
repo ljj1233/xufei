@@ -33,7 +33,7 @@ class AnalysisResponse(BaseModel):
 @router.post("/{interview_id}", response_model=AnalysisResponse)
 async def start_analysis(
     interview_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: DBUser = Depends(get_current_user),
     db: Session = Depends(get_db)
 ) -> Any:
     # 获取面试记录
@@ -82,7 +82,7 @@ async def start_analysis(
 @router.get("/{interview_id}", response_model=AnalysisResponse)
 async def get_analysis(
     interview_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: DBUser = Depends(get_current_user),
     db: Session = Depends(get_db)
 ) -> Any:
     # 检查面试记录是否属于当前用户
@@ -111,7 +111,7 @@ async def get_analysis(
 @router.delete("/{interview_id}")
 async def delete_analysis(
     interview_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: DBUser = Depends(get_current_user),
     db: Session = Depends(get_db)
 ) -> Any:
     # 检查面试记录是否属于当前用户

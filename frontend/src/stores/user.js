@@ -27,13 +27,11 @@ export const useUserStore = defineStore('user', () => {
       const response = await axios.post(`${API_URL}/users/login`, userData)
       if (response.data && response.data.access_token) {
         token.value = response.data.access_token
-        username.value = response.data.username
-        userId.value = response.data.id
+        // 获取用户信息
+        await getUserInfo()
         
         // 保存到本地存储
         localStorage.setItem('user_token', token.value)
-        localStorage.setItem('username', username.value)
-        localStorage.setItem('user_id', userId.value)
         
         return { success: true }
       }

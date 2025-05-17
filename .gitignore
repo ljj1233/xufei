@@ -9,3 +9,5 @@
 *.env.testing
 *.json
 __pycache__
+
+.vite

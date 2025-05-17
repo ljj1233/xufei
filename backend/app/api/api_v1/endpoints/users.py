@@ -31,34 +31,56 @@ def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
         User: 创建的用户信息
     """
     # 检查邮箱是否已存在
-    db_user = db.query(User).filter(User.email == user.email).first()
-    if db_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="邮箱已被注册"
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"尝试注册新用户: {user.username}, {user.email}")
+    print(f"尝试注册新用户: {user.username}, {user.email}")
+    try:
+        # 检查邮箱是否已存在
+        print(f"检查邮箱是否已存在: {user.email}")
+        db_user = db.query(User).filter(User.email == user.email).first()
+        print(f"检查邮箱是否已存在结果: {db_user}")
+        if db_user:
+            logger.warning(f"邮箱已被注册: {user.email}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="邮箱已被注册"
+            )
+        
+        # 检查用户名是否已存在
+        print(f"检查用户名是否已存在: {user.username}")
+        db_user = db.query(User).filter(User.username == user.username).first()
+        print(f"检查用户名是否已存在结果: {db_user}")
+        if db_user:
+            logger.warning(f"用户名已被使用: {user.username}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="用户名已被使用"
+            )
+        
+        # 创建新用户
+        hashed_password = get_password_hash(user.password)
+        db_user = User(
+            email=user.email,
+            username=user.username,
+            hashed_password=hashed_password
         )
-    
-    # 检查用户名是否已存在
-    db_user = db.query(User).filter(User.username == user.username).first()
-    if db_user:
+        
+        db.add(db_user)
+        db.commit()
+        db.refresh(db_user)
+        logger.info(f"用户注册成功: {user.username}")
+        return db_user
+    except HTTPException:
+        # 重新抛出HTTP异常
+        raise
+    except Exception as e:
+        logger.error(f"用户注册失败: {str(e)}")
+        db.rollback()
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="用户名已被使用"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"注册过程中发生错误: {str(e)}"
         )
-    
-    # 创建新用户
-    hashed_password = get_password_hash(user.password)
-    db_user = User(
-        email=user.email,
-        username=user.username,
-        hashed_password=hashed_password
-    )
-    
-    db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
-    
-    return db_user
 
 
 @router.post("/login", response_model=schemas.Token)
@@ -128,5 +150,5 @@ def get_current_active_user(db: Session = Depends(get_db), token: str = Depends(
     Returns:
         User: 当前用户
     """
-    # 这个函数的实现应该在auth.py中
-    pass
+    from app.utils.auth import get_current_active_user as _get_current_active_user
+    return _get_current_active_user(db=db, token=token)

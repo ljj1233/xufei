@@ -92,18 +92,31 @@ const submitForm = async () => {
     if (valid) {
       loading.value = true
       try {
+        console.log('开始发送注册请求...')
         // 发送注册请求
-        const response = await axios.post('/api/auth/register', {
+        const response = await axios.post('/api/v1/users/register', {
           username: registerForm.username,
           email: registerForm.email,
           password: registerForm.password
         })
         
+        console.log('注册请求成功:', response.data)
         ElMessage.success('注册成功！')
         router.push('/login')
       } catch (error) {
         console.error('注册失败:', error)
-        ElMessage.error(error.response?.data?.message || '注册失败，请稍后重试')
+        // 显示更详细的错误信息
+        const errorMsg = error.response?.data?.detail || '注册失败，请稍后重试'
+        console.error('错误详情:', errorMsg)
+        console.error('错误状态码:', error.response?.status)
+        console.error('错误响应:', error.response?.data)
+        
+        // 显示更友好的错误信息
+        if (error.message.includes('timeout') || errorMsg.includes('QueuePool limit')) {
+          ElMessage.error('服务器连接超时，数据库连接池已满，请稍后重试')
+        } else {
+          ElMessage.error(errorMsg)
+        }
       } finally {
         loading.value = false
       }

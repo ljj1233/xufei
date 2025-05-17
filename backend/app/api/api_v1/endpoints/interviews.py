@@ -6,7 +6,7 @@ from typing import List, Optional
 import cv2
 
 from app.db.database import get_db
-from app.db.models import Interview as DBInterview, User
+from app.db.models import Interview as DBInterview, InterviewAnalysis as DBAnalysis, User as DBUser
 from app.models.user import User
 from app.models import schemas
 from app.core.config import settings
@@ -21,7 +21,7 @@ async def upload_interview_file(
     title: str = Form(...),
     description: Optional[str] = Form(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: DBUser = Depends(get_current_active_user)
 ):
     """上传面试视频或音频文件
     
@@ -91,7 +91,7 @@ def read_interviews(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: DBUser = Depends(get_current_active_user)
 ):
     """获取用户的面试列表
     
@@ -114,7 +114,7 @@ def read_interviews(
 def read_interview(
     interview_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: DBUser = Depends(get_current_active_user)
 ):
     """获取单个面试记录
     
@@ -140,7 +140,7 @@ def read_interview(
 def delete_interview(
     interview_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: DBUser = Depends(get_current_active_user)
 ):
     """删除面试记录
     

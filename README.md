@@ -112,6 +112,47 @@
 - **前向引用**：使用`ForwardRef`处理循环引用关系
 - **命名区分**：在API端点中，使用`DBUser`、`DBInterview`等别名区分数据库模型和Pydantic模型
 
+### 3.1.1 API响应模型说明
+
+在FastAPI中，我们使用Pydantic模型作为API的响应模型（response_model），而不是直接使用SQLAlchemy数据库模型。这样做有以下几个重要原因：
+
+1. **数据验证和序列化**
+   - Pydantic模型可以自动验证响应数据的类型和格式
+   - 确保返回给客户端的数据符合预定义的结构
+   - 自动处理数据的序列化，包括日期时间、枚举等特殊类型
+
+2. **安全性**
+   - 可以控制哪些字段暴露给API
+   - 避免意外暴露敏感数据（如密码哈希）
+   - 可以添加额外的验证规则
+
+3. **文档生成**
+   - FastAPI可以根据Pydantic模型自动生成OpenAPI（Swagger）文档
+   - 清晰展示API的请求和响应结构
+
+4. **数据转换**
+   - 可以在返回数据前进行必要的转换和格式化
+   - 支持别名、计算字段等高级特性
+
+示例：
+```python
+# 在app/models/schemas.py中定义Pydantic模型
+class JobPosition(BaseModel):
+    id: int
+    title: str
+    tech_field: TechField
+    position_type: PositionType
+    required_skills: List[str]
+    job_description: str
+    evaluation_criteria: Optional[str] = None
+
+# 在API端点中使用Pydantic模型作为响应模型
+@router.get("/positions/{id}", response_model=schemas.JobPosition)
+def get_position(id: int):
+    db_position = db.query(JobPositionSchema).get(id)
+    return db_position  # FastAPI会自动将SQLAlchemy模型转换为Pydantic模型
+```
+
 ### 3.2 API端点结构
 
 - **用户API**：用户注册、登录、个人信息管理

@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Enum
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
-from app.db.base import Base
+from app.db.database import Base
 import enum
 
 class FileType(str, enum.Enum):
@@ -10,6 +10,7 @@ class FileType(str, enum.Enum):
 
 class Interview(Base):
     __tablename__ = "interviews"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)

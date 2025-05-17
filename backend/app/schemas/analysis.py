@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 import json
@@ -6,12 +6,15 @@ import json
 class AnalysisBase(BaseModel):
     """分析结果基础模型"""
     interview_id: int
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
 class SpeechAnalysis(BaseModel):
     """语音分析结果"""
     clarity: float = Field(..., description="语音清晰度评分(0-10)")
     pace: float = Field(..., description="语速评分(0-10)")
     emotion: str = Field(..., description="主要情感类型")
+    fluency: float = Field(..., description="流利度评分(0-10)")
 
 class VisualAnalysis(BaseModel):
     """视觉分析结果"""
@@ -58,9 +61,7 @@ class AnalysisInDB(AnalysisBase):
     created_at: datetime
     updated_at: datetime
     
-    class Config:
-        from_attributes = True
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(from_attributes=True, arbitrary_types_allowed=True)
 
 class Analysis(AnalysisInDB):
     """分析结果响应模型"""
@@ -75,7 +76,8 @@ class Analysis(AnalysisInDB):
             self.speech = SpeechAnalysis(
                 clarity=self.speech_clarity or 0.0,
                 pace=self.speech_pace or 0.0,
-                emotion=self.speech_emotion or ""
+                emotion=self.speech_emotion or "",
+                fluency=0.0  # Assuming fluency is not provided in the input
             )
         if any([self.facial_expressions, self.eye_contact, self.body_language]):
             self.visual = VisualAnalysis(

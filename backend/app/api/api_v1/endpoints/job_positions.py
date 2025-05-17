@@ -51,7 +51,7 @@ async def get_job_positions(
     return job_positions
 
 # 获取单个职位详情
-@router.get("/{job_position_id}", response_model=JobPositionSchema)
+@router.get("/{job_position_id}", response_model=schemas.JobPosition)
 async def get_job_position(
     job_position_id: int,
     db: Session = Depends(get_db)
@@ -67,11 +67,11 @@ async def get_job_position(
     return job_position
 
 # 更新职位信息
-@router.put("/{job_position_id}", response_model=JobPositionSchema)
+@router.put("/{job_position_id}", response_model=schemas.JobPosition)
 async def update_job_position(
     job_position_id: int,
-    job_position_update: JobPositionCreate,
-    current_user: User = Depends(get_current_user),
+    job_position_update: schemas.JobPositionCreate,
+    current_user: DBUser = Depends(get_current_user),
     db: Session = Depends(get_db)
 ) -> Any:
     # 检查用户权限
@@ -107,7 +107,7 @@ async def update_job_position(
 @router.delete("/{job_position_id}")
 async def delete_job_position(
     job_position_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: DBUser = Depends(get_current_user),
     db: Session = Depends(get_db)
 ) -> Any:
     # 检查用户权限

@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Enum
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
-from app.db.base import Base
+from app.db.database import Base
 import enum
 
 class TechField(str, enum.Enum):
@@ -17,6 +17,7 @@ class PositionType(str, enum.Enum):
 
 class JobPosition(Base):
     __tablename__ = "job_positions"
+    __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(100), nullable=False)  # 职位名称

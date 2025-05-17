@@ -32,7 +32,9 @@ class Token(BaseModel):
 @router.post("/register", response_model=Token)
 async def register(user_in: UserCreate, db: Session = Depends(get_db)) -> Any:
     # 检查用户名是否已存在
+    logging.debug(f"尝试注册用户: {user_in.username}")
     if db.query(User).filter(User.username == user_in.username).first():
+        logging.warning(f"用户名已存在: {user_in.username}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="用户名已被注册"
@@ -51,9 +53,18 @@ async def register(user_in: UserCreate, db: Session = Depends(get_db)) -> Any:
         email=user_in.email,
         hashed_password=get_password_hash(user_in.password)
     )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
+    try:
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        logging.info(f"用户注册成功: {user.username} (ID: {user.id})")
+    except Exception as e:
+        db.rollback()
+        logging.error(f"用户注册失败: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="注册过程中发生错误"
+        )
     
     # 生成访问令牌
     access_token = create_access_token(data={"sub": str(user.id)})
