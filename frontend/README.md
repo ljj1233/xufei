@@ -31,6 +31,16 @@ frontend/
 └── README.md
 ```
 
+## 页面
+- 首页（/）
+- 登录页（/login）
+- 注册页（/register，已重定向到登录页的注册模式）
+- 上传页（/upload）
+- 结果页（/results）
+- 报告页（/report/:id）
+- 用户中心页（/user）
+- 关于页（/about）
+
 ## 安装与配置
 ### 环境要求
 - Node.js 16+
@@ -40,6 +50,25 @@ frontend/
 1. 克隆项目并进入frontend目录
 2. 安装依赖：`npm install`
 3. 配置环境变量：复制`.env.example`为`.env`，填写API_URL等信息
+
+### 模式切换说明
+本前端支持“测试模式”与“上线模式”两种运行方式：
+- **测试模式**：所有页面均可访问，无需登录，便于开发和测试。
+- **上线模式**：启用正常权限控制，需登录后访问受限页面。
+
+#### 切换方式
+1. 在`.env`文件中增加或修改如下变量：
+   - `VITE_APP_MODE=test`  启用测试模式
+   - `VITE_APP_MODE=production`  启用上线模式
+2. 重新启动开发服务器或重新构建项目。
+3. 代码中可通过`import.meta.env.VITE_APP_MODE`获取当前模式。
+
+> 示例：
+> ```env
+> VITE_APP_MODE=test
+> ```
+
+如需临时切换，可直接修改`.env`后重启服务。
 
 ### 启动开发服务器
 ```bash

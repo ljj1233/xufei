@@ -53,7 +53,7 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   const userStore = useUserStore()
   // 读取全局模式配置（测试/上线）
-  const mode = window.__APP_MODE__ || 'production' // 可通过全局变量或配置文件注入
+  const mode = import.meta.env.VITE_APP_MODE || 'production' // 通过环境变量读取模式
   if (mode === 'test') {
     // 测试模式下，所有页面均可访问，无需登录
     next()

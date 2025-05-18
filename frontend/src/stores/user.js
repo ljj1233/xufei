@@ -5,6 +5,14 @@ import axios from 'axios'
 // 获取API基础URL
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'
 
+// 测试模式下的默认账号
+const DEFAULT_TEST_USER = {
+  username: 'test_user',
+  password: 'test123456',
+  token: 'test_token_12345',
+  id: '1'
+}
+
 export const useUserStore = defineStore('user', () => {
   // 状态
   const token = ref(localStorage.getItem('user_token') || '')
@@ -80,7 +88,17 @@ export const useUserStore = defineStore('user', () => {
   
   // 检查登录状态
   const checkLoginStatus = async () => {
-    if (token.value) {
+    const mode = import.meta.env.VITE_APP_MODE || 'production'
+    if (mode === 'test' && !token.value) {
+      // 测试模式下自动登录
+      token.value = DEFAULT_TEST_USER.token
+      username.value = DEFAULT_TEST_USER.username
+      userId.value = DEFAULT_TEST_USER.id
+      localStorage.setItem('user_token', token.value)
+      localStorage.setItem('username', username.value)
+      localStorage.setItem('user_id', userId.value)
+      return { success: true }
+    } else if (token.value) {
       await getUserInfo()
     }
   }
