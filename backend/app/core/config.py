@@ -14,24 +14,24 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "多模态面试评测智能体"
     API_V1_STR: str = "/api/v1"
     
-    # 数据库配置
-    POSTGRES_SERVER: str = os.getenv("POSTGRES_SERVER", "localhost")
-    POSTGRES_USER: str = os.getenv("POSTGRES_USER", "postgres")
-    POSTGRES_PASSWORD: str = os.getenv("POSTGRES_PASSWORD", "postgres")
-    POSTGRES_DB: str = os.getenv("POSTGRES_DB", "interview_analysis")
-    POSTGRES_PORT: str = os.getenv("POSTGRES_PORT", "5432")
+    # MySQL数据库配置
+    MYSQL_SERVER: str = os.getenv("MYSQL_SERVER", "localhost")
+    MYSQL_USER: str = os.getenv("MYSQL_USER", "root")
+    MYSQL_PASSWORD: str = os.getenv("MYSQL_PASSWORD", "password")
+    MYSQL_DB: str = os.getenv("MYSQL_DB", "interview_analysis")
+    MYSQL_PORT: str = os.getenv("MYSQL_PORT", "3306")
     
     # 服务器配置
     SERVER_HOST: str = os.getenv("SERVER_HOST", "0.0.0.0")
-    SERVER_PORT: int = os.getenv("SERVER_PORT", 8000)
+    SERVER_PORT: int = int(os.getenv("SERVER_PORT", "8000"))
     
     DATABASE_URI: Optional[str] = None
     DB_ECHO: bool = False  # 控制是否打印SQL语句，默认关闭
 
     # 数据库连接池配置
-    DB_POOL_SIZE: ClassVar[int] = 20  # 增大连接池大小，原默认值可能为5
-    DB_MAX_OVERFLOW: ClassVar[int] = 20  # 增大最大溢出连接数，原默认值可能为5
-    DB_POOL_TIMEOUT: ClassVar[int] = 30  # 增大连接池等待超时时间，单位秒
+    DB_POOL_SIZE: ClassVar[int] = 20  # 连接池大小
+    DB_MAX_OVERFLOW: ClassVar[int] = 20  # 最大溢出连接数
+    DB_POOL_TIMEOUT: ClassVar[int] = 30  # 连接池等待超时时间，单位秒
     
     # 安全配置
     SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-here")
@@ -52,6 +52,6 @@ class Settings(BaseSettings):
     
     def __init__(self, **data: Any):
         super().__init__(**data)
-        self.DATABASE_URI = f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+        self.DATABASE_URI = f"mysql+pymysql://{self.MYSQL_USER}:{self.MYSQL_PASSWORD}@{self.MYSQL_SERVER}:{self.MYSQL_PORT}/{self.MYSQL_DB}"
 
 settings = Settings()

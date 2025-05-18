@@ -10,7 +10,6 @@ sys.path.append(str(Path(__file__).parent.resolve()))
 
 from app.core.config import settings
 from app.api.api_v1.api import api_router
-from app.db.database import engine, Base
 
 # 创建上传目录
 os.makedirs(settings.UPLOAD_FOLDER, exist_ok=True)
@@ -35,7 +34,9 @@ async def lifespan(app: FastAPI):
         creator=engine.connect,
         pool_size=settings.DB_POOL_SIZE,
         max_overflow=settings.DB_MAX_OVERFLOW,
-        timeout=settings.DB_POOL_TIMEOUT
+        pool_timeout=settings.DB_POOL_TIMEOUT,
+        pool_recycle=3600,  # 连接回收时间
+        pool_pre_ping=True  # 连接前ping测试
     )
     
     yield
@@ -83,6 +84,7 @@ if __name__ == "__main__":
         app="main:app",
         host=settings.SERVER_HOST,
         port=settings.SERVER_PORT,
-        reload=settings.LOG_LEVEL
+        reload=True,
+        log_level=settings.LOG_LEVEL.lower()
     )
 

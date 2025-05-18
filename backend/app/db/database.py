@@ -5,6 +5,7 @@ import datetime
 import logging
 import time
 
+# 使用MySQL配置
 from app.core.config import settings
 
 # 配置日志
@@ -22,7 +23,7 @@ try:
         pool_recycle=3600,  # 连接回收时间
         pool_pre_ping=True  # 连接前ping测试
     )
-    logger.info(f"数据库连接成功: {settings.POSTGRES_SERVER}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}")
+    logger.info(f"数据库连接成功: {settings.MYSQL_SERVER}:{settings.MYSQL_PORT}/{settings.MYSQL_DB}")
 except Exception as e:
     logger.error(f"数据库连接失败: {str(e)}")
     raise

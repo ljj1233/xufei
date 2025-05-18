@@ -13,21 +13,29 @@ from app.core.config import settings
 import logging
 
 
-# PostgreSQL 测试数据库连接字符串
+# MySQL 测试数据库连接字符串
 TEST_DATABASE_URL = (
-    f"postgresql://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}"
-    f"@{settings.POSTGRES_SERVER}:{settings.POSTGRES_PORT}/interview_analysis_test"
+    f"mysql+pymysql://{settings.MYSQL_USER}:{settings.MYSQL_PASSWORD}"
+    f"@{settings.MYSQL_SERVER}:{settings.MYSQL_PORT}/interview_analysis_test"
 )
 
 @pytest.fixture(scope="function")
 def test_db():
     engine = create_engine(
         TEST_DATABASE_URL,
-        connect_args={"options": "-c timezone=Asia/Shanghai"}
+        echo=settings.DB_ECHO,
+        pool_size=settings.DB_POOL_SIZE,
+        max_overflow=settings.DB_MAX_OVERFLOW,
+        pool_timeout=settings.DB_POOL_TIMEOUT,
+        pool_recycle=3600,  # 连接回收时间
+        pool_pre_ping=True  # 连接前ping测试
     )
+    # 先强制清空所有表和依赖，避免外键约束导致 drop 失败
     with engine.connect() as conn:
-        conn.execute(text("DROP SCHEMA public CASCADE;"))
-        conn.execute(text("CREATE SCHEMA public;"))
+        conn.execute(text("SET FOREIGN_KEY_CHECKS = 0;"))
+        for table in reversed(Base.metadata.sorted_tables):
+            conn.execute(text(f"TRUNCATE TABLE {table.name};"))
+        conn.execute(text("SET FOREIGN_KEY_CHECKS = 1;"))
         conn.commit()
     Base.metadata.create_all(engine)
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

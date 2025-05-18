@@ -9,7 +9,6 @@ from app.api.api_v1.api import api_router
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import create_engine, text, Column, Integer, DateTime
 from sqlalchemy.orm import DeclarativeBase, declared_attr
-from app.core.config import settings
 import logging
 
 # 配置日志
@@ -27,7 +26,7 @@ try:
         pool_recycle=3600,  # 连接回收时间
         pool_pre_ping=True  # 连接前ping测试
     )
-    logger.info(f"数据库连接成功: {settings.POSTGRES_SERVER}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}")
+    logger.info(f"数据库连接成功: {settings.MYSQL_SERVER}:{settings.MYSQL_PORT}/{settings.MYSQL_DB}")
 except Exception as e:
     logger.error(f"数据库连接失败: {str(e)}")
     raise
@@ -45,8 +44,10 @@ def test_db():
     )
     # 先强制清空所有表和依赖，避免外键约束导致 drop 失败
     with engine.connect() as conn:
-        conn.execute(text("DROP SCHEMA public CASCADE;"))
-        conn.execute(text("CREATE SCHEMA public;"))
+        conn.execute(text("SET FOREIGN_KEY_CHECKS = 0;"))
+        for table in reversed(Base.metadata.sorted_tables):
+            conn.execute(text(f"TRUNCATE TABLE {table.name};"))
+        conn.execute(text("SET FOREIGN_KEY_CHECKS = 1;"))
         conn.commit()
     Base.metadata.create_all(engine)
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

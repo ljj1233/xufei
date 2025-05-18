@@ -17,7 +17,10 @@ const router = createRouter({
     {
       path: '/register',
       name: 'register',
-      component: () => import('../views/RegisterView.vue')
+      // 直接重定向到登录页并自动切换到注册模式
+      beforeEnter: (to, from, next) => {
+        next({ name: 'login', query: { mode: 'register' } })
+      }
     },
     {
       path: '/upload',
@@ -49,14 +52,18 @@ const router = createRouter({
 // 导航守卫
 router.beforeEach((to, from, next) => {
   const userStore = useUserStore()
-  
-  // 检查路由是否需要认证
-  if (to.meta.requiresAuth && !userStore.isLoggedIn) {
-    // 如果需要认证但用户未登录，重定向到登录页
-    next({ name: 'login' })
-  } else {
-    // 否则正常导航
+  // 读取全局模式配置（测试/上线）
+  const mode = window.__APP_MODE__ || 'production' // 可通过全局变量或配置文件注入
+  if (mode === 'test') {
+    // 测试模式下，所有页面均可访问，无需登录
     next()
+  } else {
+    // 上线模式，按原有权限控制
+    if (to.meta.requiresAuth && !userStore.isLoggedIn) {
+      next({ name: 'login' })
+    } else {
+      next()
+    }
   }
 })
 

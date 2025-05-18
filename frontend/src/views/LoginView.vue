@@ -94,7 +94,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '../stores/user'
@@ -103,11 +103,8 @@ const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
 
-// 表单引用
 const loginFormRef = ref(null)
 const registerFormRef = ref(null)
-
-// 加载状态
 const loading = ref(false)
 
 // 控制显示登录还是注册表单
@@ -130,53 +127,65 @@ const registerForm = reactive({
 // 登录表单验证规则
 const loginRules = {
   username: [
-    { required: true, message: '请输入用户名', trigger: 'blur' },
-    { min: 3, max: 20, message: '用户名长度应为3-20个字符', trigger: 'blur' }
+    { required: true, message: '请输入用户名', trigger: 'blur' }
   ],
   password: [
-    { required: true, message: '请输入密码', trigger: 'blur' },
-    { min: 6, message: '密码长度至少为6个字符', trigger: 'blur' }
+    { required: true, message: '请输入密码', trigger: 'blur' }
   ]
 }
 
 // 注册表单验证规则
+const validatePass2 = (rule, value, callback) => {
+  if (value === '') {
+    callback(new Error('请再次输入密码'))
+  } else if (value !== registerForm.password) {
+    callback(new Error('两次输入密码不一致'))
+  } else {
+    callback()
+  }
+}
 const registerRules = {
   username: [
     { required: true, message: '请输入用户名', trigger: 'blur' },
-    { min: 3, max: 20, message: '用户名长度应为3-20个字符', trigger: 'blur' }
+    { min: 3, max: 20, message: '长度在 3 到 20 个字符', trigger: 'blur' }
   ],
   email: [
-    { required: true, message: '请输入邮箱', trigger: 'blur' },
-    { type: 'email', message: '请输入有效的邮箱地址', trigger: 'blur' }
+    { required: true, message: '请输入邮箱地址', trigger: 'blur' },
+    { type: 'email', message: '请输入正确的邮箱地址', trigger: 'blur' }
   ],
   password: [
     { required: true, message: '请输入密码', trigger: 'blur' },
-    { min: 6, message: '密码长度至少为6个字符', trigger: 'blur' }
+    { min: 6, message: '密码长度不能小于6个字符', trigger: 'blur' }
   ],
   confirmPassword: [
     { required: true, message: '请再次输入密码', trigger: 'blur' },
-    {
-      validator: (rule, value, callback) => {
-        if (value !== registerForm.password) {
-          callback(new Error('两次输入的密码不一致'))
-        } else {
-          callback()
-        }
-      },
-      trigger: 'blur'
-    }
+    { validator: validatePass2, trigger: 'blur' }
   ]
 }
+
+// 监听路由参数，自动切换到注册模式
+watch(
+  () => route.query.mode,
+  (mode) => {
+    if (mode === 'register') {
+      isLogin.value = false
+    } else {
+      isLogin.value = true
+    }
+  },
+  { immediate: true }
+)
 
 // 切换登录/注册表单
 const toggleForm = () => {
   isLogin.value = !isLogin.value
+  // 切换时清除路由参数，避免模式混乱
+  router.replace({ query: {} })
 }
 
 // 处理登录
 const handleLogin = async () => {
   if (!loginFormRef.value) return
-  
   await loginFormRef.value.validate(async (valid) => {
     if (valid) {
       loading.value = true
@@ -184,7 +193,7 @@ const handleLogin = async () => {
         const result = await userStore.login(loginForm)
         if (result.success) {
           ElMessage.success('登录成功')
-          // 如果有重定向路径，则跳转到该路径，否则跳转到首页
+          // 登录后跳转
           const redirectPath = route.query.redirect || '/'
           router.push(redirectPath)
         } else {
@@ -192,7 +201,6 @@ const handleLogin = async () => {
         }
       } catch (error) {
         ElMessage.error('登录过程中发生错误')
-        console.error(error)
       } finally {
         loading.value = false
       }
@@ -203,19 +211,16 @@ const handleLogin = async () => {
 // 处理注册
 const handleRegister = async () => {
   if (!registerFormRef.value) return
-  
   await registerFormRef.value.validate(async (valid) => {
     if (valid) {
       loading.value = true
       try {
-        // 准备注册数据，移除确认密码字段
+        // 移除确认密码字段
         const { confirmPassword, ...registerData } = registerForm
-        
         const result = await userStore.register(registerData)
         if (result.success) {
           ElMessage.success('注册成功，请登录')
           isLogin.value = true
-          // 将注册的用户名填入登录表单
           loginForm.username = registerForm.username
           loginForm.password = ''
         } else {
@@ -223,7 +228,6 @@ const handleRegister = async () => {
         }
       } catch (error) {
         ElMessage.error('注册过程中发生错误')
-        console.error(error)
       } finally {
         loading.value = false
       }

@@ -11,3 +11,7 @@
 __pycache__
 
 .vite
+
+# 忽略 node_modules 下的二进制及构建产物
+frontend/node_modules/.bin/
+frontend/node_modules/**/*.node
