@@ -1,4 +1,61 @@
-/* 全局样式 */
+/* --- 1. CSS 自定义属性 (全局变量) --- */
+:root {
+  /* 主色调 (讯飞蓝) */
+  --iflytek-blue: #1E88E5;
+  --iflytek-blue-light-1: #4D9FFA; /* 比主色亮一点 (例如：主要按钮悬浮) */
+  --iflytek-blue-light-2: #64B5F6; /* 之前的 --primary-light 感觉, 用于一般高亮 */
+  --iflytek-blue-pale: #EBF5FF;   /* 极浅蓝 (例如：辅助背景, dashed border) */
+  --iflytek-blue-dark-1: #1565C0;  /* 比主色深一点 (例如：重要文字、激活状态) */
+
+  /* 辅助色 (对应您之前的语义) */
+  --app-success-color: #4CAF50;
+  --app-success-bg-light: #E8F5E9; /* 浅绿背景 */
+  --app-success-text-dark: #2E7D32; /* 深绿文字 */
+
+  --app-warning-color: #FF9800;
+  --app-warning-bg-light: #FFF8E1; /* 浅黄/橙背景 */
+  --app-warning-text-dark: #F57F17; /* 深橙/黄文字 */
+
+  --app-danger-color: #F44336;
+  --app-danger-bg-light: #FFEBEE;  /* 浅红背景 */
+  --app-danger-text-dark: #C62828;  /* 深红文字 */
+
+  /* 中性灰色系 */
+  --app-text-color-primary: #333333;    /* 主要文字 */
+  --app-text-color-regular: #666666;   /* 常规文字 (您之前用的 #616161 很接近) */
+  --app-text-color-secondary: #999999; /* 次要文字 */
+  --app-text-color-placeholder: #C0C4CC; /* 占位文字 */
+
+  --app-border-color-base: #E0E0E0;     /* 基础边框色 */
+  --app-border-color-light: #EBEEF5;    /* 浅边框色 (更柔和) */
+
+  /* 背景色 */
+  --app-bg-color-global: #f5f7fa;       /* 全局页面背景 (与您现有一致) */
+  --app-bg-color-card: #FFFFFF;         /* 卡片/内容区域背景 */
+  --app-bg-color-upload-area: rgba(30, 136, 229, 0.05); /* 上传区域浅蓝背景 */
+  --app-bg-color-upload-area-hover: rgba(30, 136, 229, 0.1);
+
+  /* 字体 */
+  --app-font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑', Arial, sans-serif; /* 与您现有一致 */
+  --app-font-size-base: 16px; /* 与您现有一致, rem 单位将基于此 */
+  --app-line-height-base: 1.6; /* 稍微增加行高以便阅读 */
+
+  /* 圆角 */
+  --app-border-radius-small: 0.25rem; /* 4px */
+  --app-border-radius-base: 0.5rem;  /* 8px (与您现有 .card, .upload-area 一致) */
+  --app-border-radius-large: 0.75rem;/* 12px */
+
+  /* 阴影 */
+  --app-box-shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.05); /* 更细微的阴影 (2px 4px) */
+  --app-box-shadow-base: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.07); /* 基础卡片阴影 (您的是0.1) */
+  --app-box-shadow-hover: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);   /* 悬浮时阴影 */
+
+  /* 过渡 */
+  --app-transition-duration: 0.3s;
+  --app-transition-timing-function: ease;
+}
+
+/* --- 全局样式 --- */
 * {
   box-sizing: border-box;
   margin: 0;
@@ -6,98 +63,271 @@
 }
 
 html, body {
-  font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑', Arial, sans-serif;
-  font-size: 16px;
-  color: #333;
-  line-height: 1.5;
-  background-color: #f5f7fa;
+  font-family: var(--app-font-family);
+  font-size: var(--app-font-size-base); /* rem 单位基于此 */
+  color: var(--app-text-color-primary);
+  line-height: var(--app-line-height-base);
+  background-color: var(--app-bg-color-global);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 a {
-  color: #1E88E5;
+  color: var(--iflytek-blue);
   text-decoration: none;
+  transition: color var(--app-transition-duration) var(--app-transition-timing-function);
 }
 
 a:hover {
-  text-decoration: underline;
+  color: var(--iflytek-blue-light-1);
+  text-decoration: underline; /* 保留下划线或移除，根据偏好 */
 }
 
-/* 通用卡片样式 */
+/* --- 响应式工具类 (可选) --- */
+.container-fluid {
+  width: 100%;
+  padding-right: 1rem; /* 16px */
+  padding-left: 1rem;
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.container {
+  width: 100%;
+  padding-right: 1rem;
+  padding-left: 1rem;
+  margin-right: auto;
+  margin-left: auto;
+}
+
+@media (min-width: 576px) {
+  .container { max-width: 540px; }
+}
+@media (min-width: 768px) {
+  .container { max-width: 720px; }
+}
+@media (min-width: 992px) {
+  .container { max-width: 960px; }
+}
+@media (min-width: 1200px) {
+  .container { max-width: 1140px; }
+}
+
+
+/* --- 通用卡片样式 --- */
 .card {
-  padding: 1.5rem;
-  border-radius: 0.5rem;
-  background-color: #ffffff;
-  box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
-  margin-bottom: 1rem;
+  padding: 1.5rem; /* 24px */
+  border-radius: var(--app-border-radius-base); /* 8px */
+  background-color: var(--app-bg-color-card);
+  box-shadow: var(--app-box-shadow-base);
+  margin-bottom: 1.5rem; /* 24px, 增加一点底部间距 */
+  border: 1px solid var(--app-border-color-light); /* 添加一个非常柔和的边框 */
+  transition: box-shadow var(--app-transition-duration) var(--app-transition-timing-function),
+              transform var(--app-transition-duration) var(--app-transition-timing-function);
 }
 
-/* 页面标题样式 */
+.card:hover {
+  box-shadow: var(--app-box-shadow-hover);
+  transform: translateY(-3px); /* 轻微上浮效果 */
+}
+
+/* --- 页面标题样式 --- */
 .page-title {
-  font-size: 2rem;
-  color: #1E88E5;
-  margin-bottom: 1.5rem;
+  font-size: 2rem; /* 32px */
+  color: var(--iflytek-blue-dark-1); /* 使用深蓝色以示强调 */
+  margin-bottom: 2rem; /* 增加标题下方间距 */
+  font-weight: 600; /* 加粗 */
+  position: relative;
+  padding-bottom: 0.75rem; /* 为下划线留出空间 */
 }
 
-/* 分数卡片样式 */
+.page-title::after { /* 讯飞风格下划线 */
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 60px; /* 或根据标题长度调整，如 25% */
+  height: 4px;
+  background-color: var(--iflytek-blue);
+  border-radius: 2px;
+}
+
+
+/* --- 分数卡片样式 --- */
 .score-card {
   text-align: center;
-  padding: 1rem;
-  border-radius: 0.5rem;
-  margin-bottom: 1rem;
+  padding: 1.5rem; /* 增加内边距 */
+  border-radius: var(--app-border-radius-base); /* 8px */
+  margin-bottom: 1rem; /* 16px */
+  transition: all var(--app-transition-duration) var(--app-transition-timing-function);
+  border: 1px solid transparent; /* 预留边框位置，避免悬浮时跳动 */
+}
+
+.score-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--app-box-shadow-sm);
 }
 
 .score-value {
-  font-size: 2.5rem;
-  font-weight: bold;
+  font-size: 2.5rem; /* 40px */
+  font-weight: 700; /* 更粗的字重 */
+  line-height: 1.2;
+  margin-bottom: 0.25rem;
 }
 
 .score-label {
-  font-size: 1rem;
-  color: #616161;
+  font-size: 1rem; /* 16px */
+  color: var(--app-text-color-regular);
 }
 
-.good-score {
-  background-color: #E8F5E9;
-  color: #2E7D32;
+.score-card.good-score {
+  background-color: var(--app-success-bg-light);
+  color: var(--app-success-text-dark);
+  border-color: var(--app-success-color); /* 匹配的边框色 */
+}
+.score-card.good-score .score-value {
+  color: var(--app-success-text-dark);
 }
 
-.medium-score {
-  background-color: #FFF8E1;
-  color: #F57F17;
+
+.score-card.medium-score {
+  background-color: var(--app-warning-bg-light);
+  color: var(--app-warning-text-dark);
+  border-color: var(--app-warning-color);
+}
+.score-card.medium-score .score-value {
+  color: var(--app-warning-text-dark);
 }
 
-.bad-score {
-  background-color: #FFEBEE;
-  color: #C62828;
+.score-card.bad-score {
+  background-color: var(--app-danger-bg-light);
+  color: var(--app-danger-text-dark);
+  border-color: var(--app-danger-color);
+}
+.score-card.bad-score .score-value {
+  color: var(--app-danger-text-dark);
 }
 
-/* 上传区域样式 */
+
+/* --- 上传区域样式 --- */
 .upload-area {
-  border: 2px dashed #1E88E5;
-  border-radius: 0.5rem;
-  padding: 2rem;
+  border: 2px dashed var(--iflytek-blue-light-2); /* 使用浅蓝色虚线框 */
+  border-radius: var(--app-border-radius-base); /* 8px */
+  padding: 2.5rem; /* 增加内边距 */
   text-align: center;
-  margin-bottom: 1rem;
-  background-color: #f8f9fa;
+  margin-bottom: 1.5rem; /* 增加底部间距 */
+  background-color: var(--app-bg-color-upload-area);
+  transition: border-color var(--app-transition-duration) var(--app-transition-timing-function),
+              background-color var(--app-transition-duration) var(--app-transition-timing-function);
+  cursor: pointer;
 }
 
-/* 表单样式 */
+.upload-area:hover {
+  border-color: var(--iflytek-blue);
+  background-color: var(--app-bg-color-upload-area-hover);
+}
+
+.upload-area .upload-icon { /* 如果有图标 */
+  font-size: 3rem; /* 48px */
+  color: var(--iflytek-blue);
+  margin-bottom: 1rem;
+}
+
+.upload-area .upload-text-main {
+  font-size: 1.125rem; /* 18px */
+  color: var(--app-text-color-primary);
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+.upload-area .upload-text-secondary {
+  font-size: 0.875rem; /* 14px */
+  color: var(--app-text-color-regular);
+}
+
+
+/* --- 表单样式 --- */
 .form-container {
   max-width: 600px;
   margin: 0 auto;
+  padding: 2rem; /* 给表单容器一些内边距 */
+  background-color: var(--app-bg-color-card);
+  border-radius: var(--app-border-radius-large); /* 12px, 更大的圆角 */
+  box-shadow: var(--app-box-shadow-base);
 }
 
-/* 响应式布局 */
+/* (Element Plus 表单项美化通常在 Element Plus 专属样式中，但如果这是自定义表单：) */
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: var(--app-text-color-regular);
+}
+
+.form-control { /* 假设的自定义输入框类 */
+  display: block;
+  width: 100%;
+  padding: 0.75rem 1rem; /* 12px 16px */
+  font-size: 1rem; /* 16px */
+  line-height: 1.5;
+  color: var(--app-text-color-primary);
+  background-color: #fff;
+  background-clip: padding-box;
+  border: 1px solid var(--app-border-color-base);
+  border-radius: var(--app-border-radius-small); /* 4px */
+  transition: border-color var(--app-transition-duration) var(--app-transition-timing-function),
+              box-shadow var(--app-transition-duration) var(--app-transition-timing-function);
+}
+
+.form-control:focus {
+  border-color: var(--iflytek-blue);
+  outline: 0;
+  box-shadow: 0 0 0 0.2rem rgba(30, 136, 229, 0.25); /* 聚焦光晕 */
+}
+
+
+/* --- 响应式布局 (沿用您的，稍作调整) --- */
 @media (max-width: 768px) {
-  .el-header {
-    padding: 0 10px;
+  .el-header { /* 假设这是 Element Plus 的 Header */
+    padding: 0 0.75rem; /* 12px */
   }
-  
-  .logo h1 {
-    font-size: 1.2rem;
+
+  .logo h1 { /* 假设您有 .logo h1 */
+    font-size: 1.25rem; /* 20px, 稍微大一点 */
   }
-  
-  .el-main {
-    padding: 10px;
+
+  .el-main { /* 假设这是 Element Plus 的 Main */
+    padding: 0.75rem; /* 12px */
+  }
+
+  .page-title {
+    font-size: 1.75rem; /* 28px */
+    margin-bottom: 1.5rem;
+  }
+
+  .card,
+  .form-container,
+  .upload-area {
+    padding: 1.25rem; /* 20px */
+  }
+
+  .score-card {
+    padding: 1rem;
   }
 }
+
+/* --- 您可能需要的其他全局工具类 --- */
+.text-center { text-align: center; }
+.mb-1 { margin-bottom: 0.5rem; } /* 8px */
+.mb-2 { margin-bottom: 1rem; }   /* 16px */
+.mb-3 { margin-bottom: 1.5rem; } /* 24px */
+.mb-4 { margin-bottom: 2rem; }   /* 32px */
+
+.d-flex { display: flex; }
+.align-items-center { align-items: center; }
+.justify-content-center { justify-content: center; }
+.flex-column { flex-direction: column; }

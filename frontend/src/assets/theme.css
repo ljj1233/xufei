@@ -1,260 +1,334 @@
-/* 多模态面试评测智能体 - 主题样式 */
-
-/* 全局变量 */
+/* --- 1. CSS 自定义属性 (全局变量) --- */
 :root {
-  --primary-color: #1E88E5;
-  --primary-light: #64B5F6;
-  --primary-dark: #0D47A1;
-  --success-color: #4CAF50;
-  --warning-color: #FF9800;
-  --danger-color: #F44336;
-  --text-primary: #333333;
-  --text-secondary: #666666;
-  --text-light: #999999;
-  --bg-light: #F5F7FA;
-  --bg-white: #FFFFFF;
-  --border-color: #E0E0E0;
-  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.1);
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --transition: all 0.3s ease;
-  --font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑', Arial, sans-serif;
+  /* 主色调 (讯飞蓝) */
+  --iflytek-blue: #1E88E5;
+  --iflytek-blue-light-1: #4D9FFA; /* 比主色亮一点 (例如：主要按钮悬浮) */
+  --iflytek-blue-light-2: #64B5F6; /* 之前用户CSS中的 --primary-light，调整为一个系列 */
+  --iflytek-blue-light-3: #A7D2FE;
+  --iflytek-blue-pale: #EBF5FF;   /* 极浅蓝 (例如：辅助背景) */
+  --iflytek-blue-dark-1: #1565C0;  /* 比主色深一点 (例如：重要文字、边框) */
+  --iflytek-blue-dark-2: #0D47A1;  /* 之前用户CSS中的 --primary-dark，保持一致 */
+
+  /* 辅助色 */
+  --iflytek-green: #4CAF50;         /* 对应用户CSS中的 --success-color */
+  --iflytek-orange: #FF9800;       /* 对应用户CSS中的 --warning-color */
+  --iflytek-red-danger: #F44336;   /* 对应用户CSS中的 --danger-color */
+
+  /* 中性灰色系 */
+  --app-text-color-primary: #333333;    /* 主要文字 (对应用户CSS中的 --text-primary) */
+  --app-text-color-regular: #666666;   /* 常规文字 (对应用户CSS中的 --text-secondary) */
+  --app-text-color-secondary: #999999; /* 次要文字 (对应用户CSS中的 --text-light) */
+  --app-text-color-placeholder: #C0C4CC; /* 占位文字 */
+
+  --app-border-color-base: #E0E0E0;     /* 基础边框色 (对应用户CSS中的 --border-color) */
+  --app-border-color-light: #E4E7ED;    /* 浅边框色 */
+  --app-border-color-lighter: #EBEEF5;  /* 更浅边框色 */
+  --app-border-color-extra-light: #F2F6FC; /* 极浅边框色 */
+
+  /* 背景色 */
+  --app-bg-color-global: #F5F7FA;       /* 全局页面背景 (对应用户CSS中的 --bg-light) */
+  --app-bg-color-card: #FFFFFF;         /* 卡片/内容区域背景 (对应用户CSS中的 --bg-white) */
+  --app-bg-color-overlay: rgba(0, 0, 0, 0.5); /* 遮罩层背景 */
+
+  /* 字体 */
+  --app-font-family-sans-serif: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑', Arial, sans-serif; /* 与用户CSS一致 */
+  --app-font-size-base: 14px;
+  --app-line-height-base: 1.6; /* 与用户CSS一致 */
+
+  /* 圆角 */
+  --app-border-radius-small: 4px;  /* 对应用户CSS中的 --radius-sm */
+  --app-border-radius-base: 8px;   /* 对应用户CSS中的 --radius-md */
+  --app-border-radius-large: 12px; /* 对应用户CSS中的 --radius-lg */
+  --app-border-radius-circle: 50%;
+
+  /* 阴影 */
+  --app-box-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);   /* 与用户CSS --shadow-sm 一致 */
+  --app-box-shadow-base: 0 6px 12px rgba(0, 0, 0, 0.08); /* 更柔和的基础阴影 */
+  --app-box-shadow-md: 0 4px 8px rgba(0, 0, 0, 0.1);    /* 与用户CSS --shadow-md 一致 */
+  --app-box-shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.1);   /* 与用户CSS --shadow-lg 一致 */
+  --app-box-shadow-focus-blue: 0 0 0 2px rgba(30, 136, 229, 0.2); /* 输入框聚焦阴影 */
+
+  /* 过渡 */
+  --app-transition-duration: 0.3s;
+  --app-transition-timing-function: ease; /* 与用户CSS --transition 的 ease 部分一致*/
 }
 
-/* 全局样式增强 */
+/* --- 2. 基础全局样式 --- */
 body {
-  font-family: var(--font-family);
-  color: var(--text-primary);
-  background-color: var(--bg-light);
-  line-height: 1.6;
+  font-family: var(--app-font-family-sans-serif);
+  font-size: var(--app-font-size-base);
+  line-height: var(--app-line-height-base);
+  color: var(--app-text-color-primary);
+  background-color: var(--app-bg-color-global);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  margin: 0;
+  padding: 0;
 }
 
-/* 布局容器 */
-.app-container {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+h1, h2, h3, h4, h5, h6 {
+  color: var(--app-text-color-primary);
+  font-weight: 600; /* Semibold for titles */
 }
 
-/* 页面容器 */
-.page-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 2rem 1rem;
+a {
+  color: var(--iflytek-blue);
+  text-decoration: none;
+  transition: color var(--app-transition-duration) var(--app-transition-timing-function);
+}
+
+a:hover {
+  color: var(--iflytek-blue-light-1);
+}
+
+/* --- 3. 响应式工具类 --- */
+.container-fluid {
   width: 100%;
+  padding-right: 15px;  /* 可以使用 CSS 变量定义这些值 */
+  padding-left: 15px;
+  margin-right: auto;
+  margin-left: auto;
 }
 
-/* 页面标题 */
-.page-title {
-  font-size: 2rem;
-  font-weight: 600;
-  color: var(--primary-dark);
-  margin-bottom: 1.5rem;
-  position: relative;
-  padding-bottom: 0.5rem;
+.container {
+  width: 100%;
+  padding-right: 15px;
+  padding-left: 15px;
+  margin-right: auto;
+  margin-left: auto;
 }
 
-.page-title::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 60px;
-  height: 4px;
-  background-color: var(--primary-color);
-  border-radius: 2px;
+/* 不同断点下的 container 最大宽度 */
+@media (min-width: 576px) {
+  .container {
+    max-width: 540px;
+  }
+}
+@media (min-width: 768px) {
+  .container {
+    max-width: 720px;
+  }
+}
+@media (min-width: 992px) {
+  .container {
+    max-width: 960px;
+  }
+}
+@media (min-width: 1200px) {
+  .container {
+    max-width: 1140px;
+  }
+}
+/* 您项目中已有的 .page-container 似乎也扮演了 container 的角色，可以考虑统一或按需使用 */
+
+
+/* --- 4. Element Plus 组件样式覆盖 (CSS 示例) --- */
+
+/* **按钮 (el-button)** */
+.el-button {
+  border-radius: var(--app-border-radius-small); /* 沿用用户现有 --radius-sm */
+  transition: all var(--app-transition-duration) var(--app-transition-timing-function);
+  font-weight: 500; /* Medium weight for button text */
 }
 
-/* 卡片样式增强 */
+/* 主要按钮 */
+.el-button.el-button--primary {
+  background-color: var(--iflytek-blue);
+  border-color: var(--iflytek-blue);
+  color: #FFFFFF;
+}
+
+.el-button.el-button--primary:hover,
+.el-button.el-button--primary:focus {
+  background-color: var(--iflytek-blue-light-1); /* 调整为您期望的悬浮颜色 */
+  border-color: var(--iflytek-blue-light-1);
+  color: #FFFFFF;
+  box-shadow: 0 4px 10px rgba(30, 136, 229, 0.3);
+  transform: translateY(-1px);
+}
+.el-button.el-button--primary:active {
+  background-color: var(--iflytek-blue-dark-1); /* 调整为您期望的激活颜色 */
+  border-color: var(--iflytek-blue-dark-1);
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+/* 次要/默认按钮 */
+.el-button.el-button--default,
+.el-button:not(.el-button--primary):not(.el-button--success):not(.el-button--warning):not(.el-button--danger):not(.el-button--info):not(.el-button--text) {
+  color: var(--iflytek-blue);
+  border-color: var(--iflytek-blue-pale); /* 使用浅色边框 */
+  background-color: var(--app-bg-color-card); /* 通常是白色 */
+}
+
+.el-button.el-button--default:hover,
+.el-button.el-button--default:focus,
+.el-button:not(.el-button--primary):not(.el-button--success):not(.el-button--warning):not(.el-button--danger):not(.el-button--info):not(.el-button--text):hover,
+.el-button:not(.el-button--primary):not(.el-button--success):not(.el-button--warning):not(.el-button--danger):not(.el-button--info):not(.el-button--text):focus {
+  color: #FFFFFF;
+  border-color: var(--iflytek-blue-light-1);
+  background-color: var(--iflytek-blue-light-1);
+  box-shadow: 0 2px 8px rgba(30, 136, 229, 0.2);
+}
+
+.el-button.el-button--default:active,
+.el-button:not(.el-button--primary):not(.el-button--success):not(.el-button--warning):not(.el-button--danger):not(.el-button--info):not(.el-button--text):active {
+  color: #FFFFFF;
+  border-color: var(--iflytek-blue-dark-1);
+  background-color: var(--iflytek-blue-dark-1);
+  box-shadow: none;
+}
+
+/* 文本按钮 */
+.el-button.el-button--text {
+  color: var(--iflytek-blue);
+}
+.el-button.el-button--text:hover,
+.el-button.el-button--text:focus {
+  color: var(--iflytek-blue-light-1);
+  background-color: var(--iflytek-blue-pale); /* 轻微背景反馈 */
+}
+.el-button.el-button--text:active {
+  color: var(--iflytek-blue-dark-1);
+}
+
+/* 成功按钮 */
+.el-button.el-button--success {
+  background-color: var(--iflytek-green);
+  border-color: var(--iflytek-green);
+  color: #FFFFFF;
+}
+.el-button.el-button--success:hover,
+.el-button.el-button--success:focus {
+  background-color: #388E3C; /* 比 --iflytek-green 深一点 */
+  border-color: #388E3C;
+}
+.el-button.el-button--success:active {
+  background-color: #2E7D32; /* 更深 */
+  border-color: #2E7D32;
+}
+
+/* 警告按钮 */
+.el-button.el-button--warning {
+  background-color: var(--iflytek-orange);
+  border-color: var(--iflytek-orange);
+  color: #FFFFFF;
+}
+.el-button.el-button--warning:hover,
+.el-button.el-button--warning:focus {
+  background-color: #F57C00; /* 比 --iflytek-orange 深一点 */
+  border-color: #F57C00;
+}
+.el-button.el-button--warning:active {
+  background-color: #EF6C00; /* 更深 */
+  border-color: #EF6C00;
+}
+
+/* 危险按钮 */
+.el-button.el-button--danger {
+  background-color: var(--iflytek-red-danger);
+  border-color: var(--iflytek-red-danger);
+  color: #FFFFFF;
+}
+.el-button.el-button--danger:hover,
+.el-button.el-button--danger:focus {
+  background-color: #D32F2F; /* 比 --iflytek-red-danger 深一点 */
+  border-color: #D32F2F;
+}
+.el-button.el-button--danger:active {
+  background-color: #C62828; /* 更深 */
+  border-color: #C62828;
+}
+
+
+/* **卡片 (el-card)** */
+/* 您现有的 .el-card 样式已经包含了圆角和阴影，这里是对照和补充 */
 .el-card {
-  border: none;
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
-  transition: var(--transition);
-  margin-bottom: 1.5rem;
+  border-radius: var(--app-border-radius-base); /* 对应您之前的 --radius-md */
+  border: 1px solid var(--app-border-color-lighter); /* 更柔和的边框，如果想完全无边框则设为 none */
+  box-shadow: var(--app-box-shadow-base); /* 使用新的基础阴影 */
+  transition: box-shadow var(--app-transition-duration) var(--app-transition-timing-function),
+              transform var(--app-transition-duration) var(--app-transition-timing-function); /* 保持 transform 过渡 */
+  margin-bottom: 1.5rem; /* 保持您现有的间距 */
 }
 
 .el-card:hover {
-  box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
+  box-shadow: var(--app-box-shadow-lg); /* 悬浮时阴影更明显，可选用 --app-box-shadow-md 或 --app-box-shadow-lg */
+  transform: translateY(-2px); /* 保持您现有的悬浮效果 */
 }
 
-.el-card__header {
-  padding: 1.25rem 1.5rem;
+/* 您现有的 .el-card__header 和 .el-card__body 样式可以保留或微调 */
+.el-card .el-card__header {
+  background-color: var(--app-bg-color-global); /* 卡片头部使用全局背景色或更浅的蓝色 */
+  border-bottom: 1px solid var(--app-border-color-light);
   font-weight: 600;
-  border-bottom: 1px solid var(--border-color);
+  color: var(--app-text-color-primary);
+  padding: 1.25rem 1.5rem; /* 沿用您现有的 padding */
 }
 
-.el-card__body {
-  padding: 1.5rem;
+.el-card .el-card__body {
+  padding: 1.5rem; /* 沿用您现有的 padding */
 }
 
-/* 特色卡片 */
-.feature-card {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
+/* **输入框 (el-input)** */
+/* Element Plus V2.x 的输入框结构是 .el-input__wrapper */
+/* 如果您使用的是旧版 Element UI，结构可能是 .el-input__inner */
+.el-input .el-input__wrapper {
+  border-radius: var(--app-border-radius-small) !important; /* 确保圆角 */
+  box-shadow: none !important; /* 移除 Element Plus 默认的内阴影 */
+  border: 1px solid var(--app-border-color-base);
+  transition: border-color var(--app-transition-duration) var(--app-transition-timing-function),
+              box-shadow var(--app-transition-duration) var(--app-transition-timing-function);
 }
 
-.feature-header {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
+.el-input .el-input__wrapper.is-focus {
+  border-color: var(--iflytek-blue);
+  box-shadow: var(--app-box-shadow-focus-blue) !important;
+}
+/* 适配您之前的 .el-input__inner 样式 */
+.el-input__inner {
+  border-radius: var(--app-border-radius-small);
+}
+.el-input__inner:focus {
+  border-color: var(--iflytek-blue); /* 这个可能被 .el-input__wrapper.is-focus 覆盖 */
 }
 
-.feature-header .el-icon {
-  font-size: 1.5rem;
-  color: var(--primary-color);
+
+/* **导航菜单 (el-menu)** */
+.el-menu {
+  border-right: none; /* 移除默认右边框 (如果用于侧边栏) */
 }
 
-.feature-header h3 {
-  margin: 0;
-  font-size: 1.25rem;
+.el-menu .el-menu-item {
+  border-radius: var(--app-border-radius-small);
+  margin: 4px 8px; /* 给菜单项一些间距 */
+  height: 48px; /* 统一菜单项高度 */
+  line-height: 48px;
 }
 
-/* 表单样式增强 */
-.el-form-item__label {
-  font-weight: 500;
+.el-menu .el-menu-item:hover {
+  background-color: var(--iflytek-blue-pale);
+  color: var(--iflytek-blue);
 }
 
-.el-input__inner,
-.el-textarea__inner {
-  border-radius: var(--radius-sm);
-}
-
-.el-input__inner:focus,
-.el-textarea__inner:focus {
-  border-color: var(--primary-color);
-}
-
-/* 按钮样式增强 */
-.el-button {
-  border-radius: var(--radius-sm);
-  font-weight: 500;
-  transition: var(--transition);
-}
-
-.el-button--primary {
-  background-color: var(--primary-color);
-  border-color: var(--primary-color);
-}
-
-.el-button--primary:hover,
-.el-button--primary:focus {
-  background-color: var(--primary-dark);
-  border-color: var(--primary-dark);
-}
-
-.el-button--success {
-  background-color: var(--success-color);
-  border-color: var(--success-color);
-}
-
-/* 上传组件样式 */
-.upload-container {
-  background-color: var(--bg-white);
-  border-radius: var(--radius-lg);
-  padding: 2rem;
-  box-shadow: var(--shadow-md);
-  max-width: 800px;
-  margin: 0 auto;
-}
-
-.upload-area {
-  border: 2px dashed var(--primary-light);
-  border-radius: var(--radius-md);
-  padding: 2rem;
-  text-align: center;
-  background-color: rgba(30, 136, 229, 0.05);
-  transition: var(--transition);
-}
-
-.upload-area:hover {
-  border-color: var(--primary-color);
-  background-color: rgba(30, 136, 229, 0.1);
-}
-
-.upload-icon {
-  font-size: 3rem;
-  color: var(--primary-color);
-  margin-bottom: 1rem;
-}
-
-/* 结果页面样式 */
-.result-card {
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  transition: var(--transition);
-  cursor: pointer;
-}
-
-.result-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-lg);
-}
-
-.result-header {
-  padding: 1rem;
-  background-color: var(--primary-color);
-  color: white;
-}
-
-.result-body {
-  padding: 1.5rem;
-}
-
-.score-badge {
-  display: inline-block;
-  padding: 0.25rem 0.75rem;
-  border-radius: 50px;
+.el-menu .el-menu-item.is-active {
+  background-color: var(--iflytek-blue);
+  color: #FFFFFF;
   font-weight: 600;
-  color: white;
-  background-color: var(--primary-color);
 }
 
-/* 雷达图容器 */
-.radar-chart-container {
-  height: 300px;
-  margin: 2rem 0;
+.el-menu .el-menu-item.is-active:hover {
+  background-color: var(--iflytek-blue); /* 激活状态悬浮时保持主色 */
 }
 
-/* 改进建议列表 */
-.suggestion-list {
-  margin-top: 1.5rem;
+/* 针对横向导航栏的激活项下划线 (如果需要) */
+.el-menu.el-menu--horizontal > .el-menu-item.is-active {
+  border-bottom: 3px solid var(--iflytek-blue);
+  color: var(--iflytek-blue);
+  background-color: transparent; /* 横向激活时通常不需要背景色 */
 }
 
-.suggestion-item {
-  padding: 1rem;
-  border-left: 4px solid var(--primary-color);
-  background-color: rgba(30, 136, 229, 0.05);
-  margin-bottom: 1rem;
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-}
-
-/* 响应式调整 */
-@media (max-width: 768px) {
-  .page-title {
-    font-size: 1.75rem;
-  }
-  
-  .upload-container,
-  .page-container {
-    padding: 1.5rem 1rem;
-  }
-  
-  .el-card__header {
-    padding: 1rem;
-  }
-  
-  .el-card__body {
-    padding: 1.25rem;
-  }
-}
-
-/* 动画效果 */
+/* --- 5. 动画 (沿用您之前的) --- */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
@@ -264,17 +338,38 @@ body {
   animation: fadeIn 0.5s ease-out;
 }
 
-/* 加载动画 */
-.loading-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 3rem 0;
+/* --- 保留您项目中其他有用的特定样式 --- */
+/* 例如： .page-title, .feature-card, .upload-container, .result-card 等， */
+/* 您可以检查它们的颜色、边框、阴影是否需要更新以使用新的 CSS 变量。 */
+
+/* 例如，更新 .page-title::after */
+.page-title::after {
+  background-color: var(--iflytek-blue); /* 使用新的主色变量 */
 }
 
-.loading-text {
-  margin-top: 1rem;
-  color: var(--primary-color);
-  font-weight: 500;
+/* 更新 .upload-area */
+.upload-area {
+  border: 2px dashed var(--iflytek-blue-light-2); /* 使用新的浅蓝变量 */
+  background-color: rgba(30, 136, 229, 0.05); /* 或者 var(--iflytek-blue-pale) 并调整透明度 */
+}
+.upload-area:hover {
+  border-color: var(--iflytek-blue);
+  background-color: rgba(30, 136, 229, 0.1);
+}
+.upload-icon {
+  color: var(--iflytek-blue);
+}
+
+/* 更新 .result-header */
+.result-header {
+  background-color: var(--iflytek-blue);
+}
+.score-badge {
+  background-color: var(--iflytek-blue);
+}
+
+/* 更新 .suggestion-item */
+.suggestion-item {
+  border-left: 4px solid var(--iflytek-blue);
+  background-color: rgba(30, 136, 229, 0.05); /* 或者 var(--iflytek-blue-pale) 并调整透明度 */
 }
