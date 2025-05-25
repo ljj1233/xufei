@@ -16,3 +16,4 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     interviews = relationship("Interview", back_populates="user")
+    interview_sessions = relationship("InterviewSession", back_populates="user")

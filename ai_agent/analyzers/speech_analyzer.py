@@ -1,8 +1,11 @@
 # ai_agent/analyzers/speech_analyzer.py
 
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional, Tuple, List
 import os
 import logging
+import numpy as np
+import time
+from collections import deque
 
 from ..core.analyzer import Analyzer
 from ..core.config import AgentConfig
@@ -38,6 +41,12 @@ class SpeechAnalyzer(Analyzer):
             except Exception as e:
                 logger.warning(f"初始化讯飞服务失败: {e}")
                 self.use_xunfei = False
+        
+        # 流式处理相关属性
+        self.stream_buffer = deque(maxlen=100)  # 音频流缓冲区
+        self.analysis_history = deque(maxlen=50)  # 分析历史记录
+        self.last_analysis_time = 0
+        self.analysis_interval = 1.0  # 分析间隔（秒）
     
     def _extract_xunfei_features(self, audio_data: bytes) -> Dict[str, Any]:
         """提取讯飞API特征
@@ -404,3 +413,256 @@ class SpeechAnalyzer(Analyzer):
         except Exception as e:
             logger.error(f"语音转文本失败: {e}")
             return ""
+    
+    def extract_stream_features(self, audio_data: bytes) -> Dict[str, Any]:
+        """提取音频流特征
+        
+        Args:
+            audio_data: 音频数据
+            
+        Returns:
+            Dict[str, Any]: 提取的特征
+        """
+        try:
+            # 将音频数据添加到缓冲区
+            self.stream_buffer.append({
+                "data": audio_data,
+                "timestamp": time.time()
+            })
+            
+            # 提取基本特征
+            features = AudioFeatureExtractor.extract_from_bytes(audio_data)
+            
+            # 添加流式特征
+            features["buffer_size"] = len(self.stream_buffer)
+            features["timestamp"] = time.time()
+            
+            return features
+            
+        except Exception as e:
+            logger.error(f"提取音频流特征失败: {e}")
+            return {}
+    
+    def analyze_stream(self, features: Dict[str, Any]) -> Dict[str, Any]:
+        """分析音频流
+        
+        Args:
+            features: 音频流特征
+            
+        Returns:
+            Dict[str, Any]: 实时分析结果
+        """
+        current_time = time.time()
+        
+        # 检查是否需要进行分析（控制分析频率）
+        if current_time - self.last_analysis_time < self.analysis_interval:
+            return {}
+        
+        try:
+            # 进行实时分析
+            result = {
+                "timestamp": current_time,
+                "clarity": self._analyze_stream_clarity(features),
+                "pace": self._analyze_stream_pace(features),
+                "volume": self._analyze_stream_volume(features),
+                "confidence": self._analyze_stream_confidence(features)
+            }
+            
+            # 添加到历史记录
+            self.analysis_history.append(result)
+            self.last_analysis_time = current_time
+            
+            # 计算趋势
+            result["trends"] = self._calculate_trends()
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"音频流分析失败: {e}")
+            return {}
+    
+    def _analyze_stream_clarity(self, features: Dict[str, Any]) -> float:
+        """分析流式清晰度
+        
+        Args:
+            features: 音频特征
+            
+        Returns:
+            float: 清晰度评分
+        """
+        try:
+            # 基于频谱特征估计清晰度
+            spectral_centroid = features.get("spectral_centroid", 0)
+            spectral_rolloff = features.get("spectral_rolloff", 0)
+            
+            # 简单的清晰度估计
+            if spectral_centroid > 1000 and spectral_rolloff > 2000:
+                clarity = 8.0
+            elif spectral_centroid > 500:
+                clarity = 6.0
+            else:
+                clarity = 4.0
+            
+            return normalize_score(clarity)
+            
+        except Exception as e:
+            logger.error(f"分析流式清晰度失败: {e}")
+            return 5.0
+    
+    def _analyze_stream_pace(self, features: Dict[str, Any]) -> float:
+        """分析流式语速
+        
+        Args:
+            features: 音频特征
+            
+        Returns:
+            float: 语速评分
+        """
+        try:
+            # 基于过零率估计语速
+            zcr = features.get("zero_crossing_rate", 0.1)
+            
+            # 简单的语速估计
+            if zcr > 0.2:
+                pace = 8.0  # 语速较快
+            elif zcr > 0.1:
+                pace = 6.0  # 语速适中
+            else:
+                pace = 4.0  # 语速较慢
+            
+            return normalize_score(pace)
+            
+        except Exception as e:
+            logger.error(f"分析流式语速失败: {e}")
+            return 5.0
+    
+    def _analyze_stream_volume(self, features: Dict[str, Any]) -> float:
+        """分析流式音量
+        
+        Args:
+            features: 音频特征
+            
+        Returns:
+            float: 音量评分
+        """
+        try:
+            # 基于RMS能量估计音量
+            rms = features.get("rms", 0.1)
+            
+            # 音量评分
+            if 0.1 <= rms <= 0.3:
+                volume = 8.0  # 音量适中
+            elif rms > 0.3:
+                volume = 6.0  # 音量偏大
+            else:
+                volume = 4.0  # 音量偏小
+            
+            return normalize_score(volume)
+            
+        except Exception as e:
+            logger.error(f"分析流式音量失败: {e}")
+            return 5.0
+    
+    def _analyze_stream_confidence(self, features: Dict[str, Any]) -> float:
+        """分析流式自信度
+        
+        Args:
+            features: 音频特征
+            
+        Returns:
+            float: 自信度评分
+        """
+        try:
+            # 基于多个特征综合估计自信度
+            rms = features.get("rms", 0.1)
+            zcr = features.get("zero_crossing_rate", 0.1)
+            spectral_centroid = features.get("spectral_centroid", 0)
+            
+            # 自信度综合评估
+            confidence_score = 0
+            
+            # 音量适中加分
+            if 0.1 <= rms <= 0.3:
+                confidence_score += 3
+            
+            # 语速适中加分
+            if 0.1 <= zcr <= 0.2:
+                confidence_score += 3
+            
+            # 频谱特征加分
+            if spectral_centroid > 500:
+                confidence_score += 2
+            
+            # 转换为10分制
+            confidence = min(10.0, max(1.0, confidence_score + 2))
+            
+            return normalize_score(confidence)
+            
+        except Exception as e:
+            logger.error(f"分析流式自信度失败: {e}")
+            return 5.0
+    
+    def _calculate_trends(self) -> Dict[str, str]:
+        """计算分析趋势
+        
+        Returns:
+            Dict[str, str]: 趋势信息
+        """
+        if len(self.analysis_history) < 3:
+            return {}
+        
+        try:
+            # 获取最近的分析结果
+            recent = list(self.analysis_history)[-3:]
+            
+            trends = {}
+            
+            # 计算清晰度趋势
+            clarity_values = [r.get("clarity", 5.0) for r in recent]
+            trends["clarity"] = self._get_trend_direction(clarity_values)
+            
+            # 计算语速趋势
+            pace_values = [r.get("pace", 5.0) for r in recent]
+            trends["pace"] = self._get_trend_direction(pace_values)
+            
+            # 计算音量趋势
+            volume_values = [r.get("volume", 5.0) for r in recent]
+            trends["volume"] = self._get_trend_direction(volume_values)
+            
+            # 计算自信度趋势
+            confidence_values = [r.get("confidence", 5.0) for r in recent]
+            trends["confidence"] = self._get_trend_direction(confidence_values)
+            
+            return trends
+            
+        except Exception as e:
+            logger.error(f"计算趋势失败: {e}")
+            return {}
+    
+    def _get_trend_direction(self, values: List[float]) -> str:
+        """获取趋势方向
+        
+        Args:
+            values: 数值列表
+            
+        Returns:
+            str: 趋势方向
+        """
+        if len(values) < 2:
+            return "稳定"
+        
+        # 计算变化
+        diff = values[-1] - values[0]
+        
+        if diff > 0.5:
+            return "上升"
+        elif diff < -0.5:
+            return "下降"
+        else:
+            return "稳定"
+    
+    def clear_stream_data(self):
+        """清空流式数据"""
+        self.stream_buffer.clear()
+        self.analysis_history.clear()
+        self.last_analysis_time = 0

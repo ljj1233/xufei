@@ -1,8 +1,11 @@
 # ai_agent/core/agent.py
 
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Callable, AsyncGenerator
 import os
 import json
+import asyncio
+import time
+from datetime import datetime
 
 from .config import AgentConfig
 from ..analyzers.speech_analyzer import SpeechAnalyzer
@@ -53,7 +56,7 @@ class AnalysisResult:
 class InterviewAgent:
     """面试评测智能体主类
     
-    负责协调各个分析器，根据场景选择合适的分析策略，并整合分析结果
+    负责协调各个分析器，支持实时面试分析和流式反馈
     """
     
     def __init__(self, config_path: Optional[str] = None):
@@ -74,6 +77,12 @@ class InterviewAgent:
         # 初始化场景注册表
         self.scenarios = {}
         self._load_default_scenarios()
+        
+        # 实时分析状态
+        self.is_analyzing = False
+        self.session_start_time = None
+        self.current_session_id = None
+        self.feedback_callbacks = []
     
     def _load_default_scenarios(self):
         """加载默认场景"""
@@ -193,3 +202,222 @@ class InterviewAgent:
         result["overall"] = self.overall_analyzer.analyze(result, scenario_params)
         
         return AnalysisResult(result)
+    
+    async def start_real_time_analysis(self, session_id: str, scenario: str = "technical", 
+                                      feedback_callback: Optional[Callable] = None) -> bool:
+        """开始实时分析
+        
+        Args:
+            session_id: 面试会话ID
+            scenario: 面试场景
+            feedback_callback: 反馈回调函数
+            
+        Returns:
+            bool: 是否成功开始
+        """
+        if self.is_analyzing:
+            return False
+            
+        self.is_analyzing = True
+        self.current_session_id = session_id
+        self.session_start_time = time.time()
+        
+        if feedback_callback:
+            self.feedback_callbacks.append(feedback_callback)
+            
+        return True
+    
+    async def stop_real_time_analysis(self, session_id: str) -> bool:
+        """停止实时分析
+        
+        Args:
+            session_id: 面试会话ID
+            
+        Returns:
+            bool: 是否成功停止
+        """
+        if self.current_session_id == session_id:
+            self.is_analyzing = False
+            self.current_session_id = None
+            self.session_start_time = None
+            self.feedback_callbacks.clear()
+            return True
+        return False
+    
+    async def analyze_audio_stream(self, session_id: str, audio_data: bytes, 
+                                  timestamp: float = None) -> Dict[str, Any]:
+        """分析音频流数据
+        
+        Args:
+            session_id: 会话ID
+            audio_data: 音频数据
+            timestamp: 时间戳
+            
+        Returns:
+            Dict[str, Any]: 实时分析结果
+        """
+        if not self.is_analyzing or self.current_session_id != session_id:
+            return {}
+            
+        try:
+            # 提取音频特征
+            features = self.speech_analyzer.extract_stream_features(audio_data)
+            
+            # 进行实时语音分析
+            speech_result = self.speech_analyzer.analyze_stream(features)
+            
+            # 计算会话时间
+            session_time = time.time() - self.session_start_time if self.session_start_time else 0
+            
+            # 构建反馈结果
+            feedback = {
+                "session_id": self.current_session_id,
+                "timestamp": timestamp or time.time(),
+                "session_time": session_time,
+                "feedback_type": "speech",
+                "analysis": speech_result,
+                "suggestions": self._generate_real_time_suggestions(speech_result)
+            }
+            
+            # 触发回调
+            for callback in self.feedback_callbacks:
+                try:
+                    await callback(session_id, feedback)
+                except Exception as e:
+                    print(f"回调函数执行失败: {e}")
+            
+            return speech_result
+            
+        except Exception as e:
+            print(f"音频流分析失败: {e}")
+            return {}
+    
+    async def analyze_video_frame(self, session_id: str, frame_data: bytes, 
+                                 timestamp: float = None) -> Dict[str, Any]:
+        """分析视频帧数据
+        
+        Args:
+            session_id: 会话ID
+            frame_data: 视频帧数据
+            timestamp: 时间戳
+            
+        Returns:
+            Dict[str, Any]: 实时分析结果
+        """
+        if not self.is_analyzing or self.current_session_id != session_id:
+            return {}
+            
+        try:
+            # 提取视觉特征
+            features = self.visual_analyzer.extract_frame_features(frame_data)
+            
+            # 进行实时视觉分析
+            visual_result = self.visual_analyzer.analyze_frame(features)
+            
+            # 计算会话时间
+            session_time = time.time() - self.session_start_time if self.session_start_time else 0
+            
+            # 构建反馈结果
+            feedback = {
+                "session_id": self.current_session_id,
+                "timestamp": timestamp or time.time(),
+                "session_time": session_time,
+                "feedback_type": "visual",
+                "analysis": visual_result,
+                "suggestions": self._generate_real_time_suggestions(visual_result)
+            }
+            
+            # 触发回调
+            for callback in self.feedback_callbacks:
+                try:
+                    await callback(session_id, feedback)
+                except Exception as e:
+                    print(f"回调函数执行失败: {e}")
+            
+            return visual_result
+            
+        except Exception as e:
+            print(f"视频帧分析失败: {e}")
+            return {}
+    
+    async def analyze_question_answer(self, session_id: str, question_id: int, answer_text: str, 
+                                     audio_features: Dict[str, Any] = None,
+                                     visual_features: Dict[str, Any] = None) -> Dict[str, Any]:
+        """分析问题回答
+        
+        Args:
+            question_id: 问题ID
+            answer_text: 回答文本
+            audio_features: 音频特征
+            visual_features: 视觉特征
+            
+        Returns:
+            Dict[str, Any]: 分析结果
+        """
+        result = {
+            "question_id": question_id,
+            "content_analysis": {},
+            "speech_analysis": {},
+            "visual_analysis": {},
+            "overall_scores": {}
+        }
+        
+        try:
+            # 内容分析
+            result["content_analysis"] = self.content_analyzer.analyze(answer_text)
+            
+            # 语音分析（如果有音频特征）
+            if audio_features:
+                result["speech_analysis"] = self.speech_analyzer.analyze(audio_features)
+            
+            # 视觉分析（如果有视觉特征）
+            if visual_features:
+                result["visual_analysis"] = self.visual_analyzer.analyze(visual_features)
+            
+            # 综合评分
+            result["overall_scores"] = self.overall_analyzer.analyze_question(result)
+            
+        except Exception as e:
+            print(f"问题回答分析失败: {e}")
+        
+        return result
+    
+    def _generate_real_time_suggestions(self, analysis_result: Dict[str, Any]) -> List[str]:
+        """生成实时建议
+        
+        Args:
+            analysis_result: 分析结果
+            
+        Returns:
+            List[str]: 建议列表
+        """
+        suggestions = []
+        
+        try:
+            # 根据分析结果生成建议
+            if "clarity" in analysis_result:
+                clarity = analysis_result["clarity"]
+                if clarity < 6.0:
+                    suggestions.append("请尽量清晰地表达，注意发音")
+            
+            if "pace" in analysis_result:
+                pace = analysis_result["pace"]
+                if pace < 5.0:
+                    suggestions.append("语速偏慢，可以适当加快")
+                elif pace > 8.0:
+                    suggestions.append("语速偏快，建议放慢一些")
+            
+            if "eye_contact" in analysis_result:
+                eye_contact = analysis_result["eye_contact"]
+                if eye_contact < 6.0:
+                    suggestions.append("增加与摄像头的眼神接触")
+            
+            if "confidence" in analysis_result:
+                confidence = analysis_result["confidence"]
+                if confidence < 6.0:
+                    suggestions.append("保持自信，放松心态")
+                    
+        except Exception as e:
+            print(f"生成实时建议失败: {e}")
+        
+        return suggestions

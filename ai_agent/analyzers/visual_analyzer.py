@@ -4,6 +4,8 @@ from typing import Dict, Any, Optional, List
 import os
 import cv2
 import numpy as np
+import time
+from collections import deque
 
 from ..core.analyzer import Analyzer
 from ..core.config import AgentConfig
@@ -30,6 +32,13 @@ class VisualAnalyzer(Analyzer):
         
         # 初始化人脸检测器（延迟加载）
         self._face_detector = None
+        
+        # 流式处理相关属性
+        self.frame_buffer = deque(maxlen=30)  # 视频帧缓冲区
+        self.analysis_history = deque(maxlen=50)  # 分析历史记录
+        self.last_analysis_time = 0
+        self.analysis_interval = 0.5  # 分析间隔（秒）
+        self.face_tracking = {}  # 人脸跟踪信息
     
     def _load_face_detector(self):
         """加载人脸检测器"""
@@ -400,3 +409,341 @@ class VisualAnalyzer(Analyzer):
             },
             "overall_score": overall_score
         }
+    
+    def extract_frame_features(self, frame_data: bytes) -> Dict[str, Any]:
+        """提取视频帧特征
+        
+        Args:
+            frame_data: 视频帧数据
+            
+        Returns:
+            Dict[str, Any]: 提取的特征
+        """
+        try:
+            # 将字节数据转换为numpy数组
+            nparr = np.frombuffer(frame_data, np.uint8)
+            frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            
+            if frame is None:
+                return {}
+            
+            # 将帧添加到缓冲区
+            self.frame_buffer.append({
+                "frame": frame,
+                "timestamp": time.time()
+            })
+            
+            # 提取帧特征
+            features = self._extract_single_frame_features(frame)
+            features["timestamp"] = time.time()
+            features["buffer_size"] = len(self.frame_buffer)
+            
+            return features
+            
+        except Exception as e:
+            print(f"提取视频帧特征失败: {e}")
+            return {}
+    
+    def analyze_frame(self, features: Dict[str, Any]) -> Dict[str, Any]:
+        """分析视频帧
+        
+        Args:
+            features: 视频帧特征
+            
+        Returns:
+            Dict[str, Any]: 实时分析结果
+        """
+        current_time = time.time()
+        
+        # 检查是否需要进行分析（控制分析频率）
+        if current_time - self.last_analysis_time < self.analysis_interval:
+            return {}
+        
+        try:
+            # 进行实时分析
+            result = {
+                "timestamp": current_time,
+                "eye_contact": self._analyze_frame_eye_contact(features),
+                "facial_expression": self._analyze_frame_expression(features),
+                "posture": self._analyze_frame_posture(features),
+                "attention": self._analyze_frame_attention(features)
+            }
+            
+            # 添加到历史记录
+            self.analysis_history.append(result)
+            self.last_analysis_time = current_time
+            
+            # 计算趋势
+            result["trends"] = self._calculate_visual_trends()
+            
+            return result
+            
+        except Exception as e:
+            print(f"视频帧分析失败: {e}")
+            return {}
+    
+    def _extract_single_frame_features(self, frame: np.ndarray) -> Dict[str, Any]:
+        """提取单帧特征
+        
+        Args:
+            frame: 视频帧
+            
+        Returns:
+            Dict[str, Any]: 帧特征
+        """
+        features = {}
+        
+        try:
+            # 加载人脸检测器（如果尚未加载）
+            if self._face_detector is None:
+                self._load_face_detector()
+            
+            # 转换为灰度图
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            
+            # 人脸检测
+            if self._face_detector is not None:
+                faces = self._face_detector.detectMultiScale(
+                    gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30)
+                )
+                features["faces"] = faces.tolist() if len(faces) > 0 else []
+            else:
+                features["faces"] = []
+            
+            # 图像质量特征
+            features["brightness"] = np.mean(gray)
+            features["contrast"] = np.std(gray)
+            features["frame_shape"] = frame.shape
+            
+        except Exception as e:
+            print(f"提取单帧特征失败: {e}")
+        
+        return features
+    
+    def _analyze_frame_eye_contact(self, features: Dict[str, Any]) -> float:
+        """分析帧眼神接触
+        
+        Args:
+            features: 帧特征
+            
+        Returns:
+            float: 眼神接触评分
+        """
+        try:
+            faces = features.get("faces", [])
+            
+            if not faces:
+                return 3.0  # 没有检测到人脸，给较低分
+            
+            # 简单估计：基于人脸位置和大小
+            face = faces[0]  # 取第一个人脸
+            x, y, w, h = face
+            
+            # 人脸在画面中央且大小适中，认为眼神接触较好
+            frame_shape = features.get("frame_shape", (480, 640, 3))
+            frame_height, frame_width = frame_shape[:2]
+            
+            # 计算人脸中心位置
+            face_center_x = x + w // 2
+            face_center_y = y + h // 2
+            
+            # 计算与画面中心的距离
+            center_x, center_y = frame_width // 2, frame_height // 2
+            distance = np.sqrt((face_center_x - center_x)**2 + (face_center_y - center_y)**2)
+            
+            # 距离越近，眼神接触越好
+            max_distance = np.sqrt(center_x**2 + center_y**2)
+            eye_contact_score = max(1.0, 10.0 - (distance / max_distance) * 5)
+            
+            return normalize_score(eye_contact_score)
+            
+        except Exception as e:
+            print(f"分析帧眼神接触失败: {e}")
+            return 5.0
+    
+    def _analyze_frame_expression(self, features: Dict[str, Any]) -> Dict[str, Any]:
+        """分析帧面部表情
+        
+        Args:
+            features: 帧特征
+            
+        Returns:
+            Dict[str, Any]: 表情分析结果
+        """
+        try:
+            faces = features.get("faces", [])
+            
+            if not faces:
+                return {"type": "neutral", "confidence": 0.5, "score": 5.0}
+            
+            # 简单的表情估计（基于人脸区域的亮度和对比度）
+            brightness = features.get("brightness", 128)
+            contrast = features.get("contrast", 50)
+            
+            # 根据亮度和对比度估计表情
+            if brightness > 140 and contrast > 60:
+                expression_type = "positive"
+                confidence = 0.7
+                score = 8.0
+            elif brightness < 100 or contrast < 30:
+                expression_type = "negative"
+                confidence = 0.6
+                score = 4.0
+            else:
+                expression_type = "neutral"
+                confidence = 0.8
+                score = 6.0
+            
+            return {
+                "type": expression_type,
+                "confidence": confidence,
+                "score": normalize_score(score)
+            }
+            
+        except Exception as e:
+            print(f"分析帧面部表情失败: {e}")
+            return {"type": "neutral", "confidence": 0.5, "score": 5.0}
+    
+    def _analyze_frame_posture(self, features: Dict[str, Any]) -> Dict[str, Any]:
+        """分析帧姿态
+        
+        Args:
+            features: 帧特征
+            
+        Returns:
+            Dict[str, Any]: 姿态分析结果
+        """
+        try:
+            faces = features.get("faces", [])
+            
+            if not faces:
+                return {"type": "unknown", "confidence": 0.3, "score": 4.0}
+            
+            # 基于人脸大小和位置估计姿态
+            face = faces[0]
+            x, y, w, h = face
+            
+            frame_shape = features.get("frame_shape", (480, 640, 3))
+            frame_height, frame_width = frame_shape[:2]
+            
+            # 人脸大小相对于画面的比例
+            face_ratio = (w * h) / (frame_width * frame_height)
+            
+            if face_ratio > 0.15:  # 人脸较大，可能距离较近
+                posture_type = "close"
+                confidence = 0.7
+                score = 7.0
+            elif face_ratio < 0.05:  # 人脸较小，可能距离较远
+                posture_type = "far"
+                confidence = 0.6
+                score = 5.0
+            else:
+                posture_type = "appropriate"
+                confidence = 0.8
+                score = 8.0
+            
+            return {
+                "type": posture_type,
+                "confidence": confidence,
+                "score": normalize_score(score)
+            }
+            
+        except Exception as e:
+            print(f"分析帧姿态失败: {e}")
+            return {"type": "unknown", "confidence": 0.3, "score": 4.0}
+    
+    def _analyze_frame_attention(self, features: Dict[str, Any]) -> float:
+        """分析帧注意力
+        
+        Args:
+            features: 帧特征
+            
+        Returns:
+            float: 注意力评分
+        """
+        try:
+            faces = features.get("faces", [])
+            
+            if not faces:
+                return 3.0
+            
+            # 基于人脸稳定性估计注意力
+            # 这里简化为基于人脸数量和大小的稳定性
+            if len(faces) == 1:  # 单个人脸，注意力集中
+                attention_score = 8.0
+            elif len(faces) > 1:  # 多个人脸，可能分心
+                attention_score = 5.0
+            else:
+                attention_score = 3.0
+            
+            return normalize_score(attention_score)
+            
+        except Exception as e:
+            print(f"分析帧注意力失败: {e}")
+            return 5.0
+    
+    def _calculate_visual_trends(self) -> Dict[str, str]:
+        """计算视觉分析趋势
+        
+        Returns:
+            Dict[str, str]: 趋势信息
+        """
+        if len(self.analysis_history) < 3:
+            return {}
+        
+        try:
+            # 获取最近的分析结果
+            recent = list(self.analysis_history)[-3:]
+            
+            trends = {}
+            
+            # 计算眼神接触趋势
+            eye_contact_values = [r.get("eye_contact", 5.0) for r in recent]
+            trends["eye_contact"] = self._get_trend_direction(eye_contact_values)
+            
+            # 计算表情趋势
+            expression_scores = [r.get("facial_expression", {}).get("score", 5.0) for r in recent]
+            trends["expression"] = self._get_trend_direction(expression_scores)
+            
+            # 计算姿态趋势
+            posture_scores = [r.get("posture", {}).get("score", 5.0) for r in recent]
+            trends["posture"] = self._get_trend_direction(posture_scores)
+            
+            # 计算注意力趋势
+            attention_values = [r.get("attention", 5.0) for r in recent]
+            trends["attention"] = self._get_trend_direction(attention_values)
+            
+            return trends
+            
+        except Exception as e:
+            print(f"计算视觉趋势失败: {e}")
+            return {}
+    
+    def _get_trend_direction(self, values: List[float]) -> str:
+        """获取趋势方向
+        
+        Args:
+            values: 数值列表
+            
+        Returns:
+            str: 趋势方向
+        """
+        if len(values) < 2:
+            return "稳定"
+        
+        # 计算变化
+        diff = values[-1] - values[0]
+        
+        if diff > 0.5:
+            return "上升"
+        elif diff < -0.5:
+            return "下降"
+        else:
+            return "稳定"
+    
+    def clear_stream_data(self):
+        """清空流式数据"""
+        self.frame_buffer.clear()
+        self.analysis_history.clear()
+        self.last_analysis_time = 0
+        self.face_tracking.clear()
