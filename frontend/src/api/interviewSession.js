@@ -132,6 +132,44 @@ export const interviewSessionAPI = {
   submitRealTimeData: async (sessionId, data) => {
     const response = await api.post(`/interview-sessions/${sessionId}/realtime-data`, data)
     return response.data
+  },
+
+  // 上传音频数据
+  uploadAudio: async (sessionId, audioFile, timestamp) => {
+    const formData = new FormData()
+    formData.append('audio', audioFile)
+    formData.append('timestamp', timestamp)
+    
+    const response = await axios.post(
+      `${API_BASE_URL}/api/v1/interview-sessions/${sessionId}/upload-audio`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${useUserStore().token}`
+        }
+      }
+    )
+    return response.data
+  },
+
+  // 上传视频帧
+  uploadVideo: async (sessionId, videoFile, timestamp) => {
+    const formData = new FormData()
+    formData.append('video', videoFile)
+    formData.append('timestamp', timestamp)
+    
+    const response = await axios.post(
+      `${API_BASE_URL}/api/v1/interview-sessions/${sessionId}/upload-video`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${useUserStore().token}`
+        }
+      }
+    )
+    return response.data
   }
 }
 

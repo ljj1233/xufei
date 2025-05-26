@@ -24,3 +24,10 @@ matplotlib>=3.3.0
 
 # 测试工具
 pytest>=6.0.0
+
+# LangGraph依赖
+langchain>=0.1.0
+langchain-core>=0.1.0
+langchain-community>=0.0.10
+langchain-experimental>=0.0.40
+langchain-langgraph>=0.0.10

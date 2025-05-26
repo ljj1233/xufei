@@ -9,15 +9,14 @@
             <template v-if="!userStore.isLoggedIn">
               <el-button type="primary" size="large" @click="router.push('/login')">立即登录</el-button>
               <el-button size="large" @click="router.push('/register')">注册账号</el-button>
+              <el-button type="info" plain size="large" @click="router.push('/about')">关于我们</el-button>
             </template>
             <template v-else>
               <el-button type="primary" size="large" @click="router.push('/upload')">上传面试</el-button>
               <el-button size="large" @click="router.push('/results')">查看分析结果</el-button>
               <el-button size="large" @click="router.push('/user')">个人中心</el-button>
+              <el-button type="info" plain size="large" @click="router.push('/about')">关于我们</el-button>
             </template>
-          </div>
-          <div class="nav-links">
-            <el-link type="primary" @click="router.push('/about')">关于我们</el-link>
           </div>
         </div>
       </el-col>

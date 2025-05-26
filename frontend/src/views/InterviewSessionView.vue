@@ -5,6 +5,65 @@
       <p>会话ID：{{ sessionId }}</p>
       <button @click="endSession" class="btn btn-danger">结束面试</button>
     </div>
+    
+    <!-- 评分结果弹窗 -->
+    <el-dialog
+      v-model="scoreDialogVisible"
+      title="面试评分结果"
+      width="500px"
+      :show-close="false"
+      :close-on-click-modal="false"
+      :close-on-press-escape="false"
+      center
+    >
+      <div class="score-dialog-content" v-loading="scoreLoading">
+        <template v-if="!scoreLoading && scoreResult">
+          <div class="score-result">
+            <el-progress type="dashboard" :percentage="scoreResult.overall_score * 10" :color="getScoreColor" :width="120">
+              <template #default="{ percentage }">
+                <span class="progress-value">{{ (percentage / 10).toFixed(1) }}</span>
+                <span class="progress-label">总分</span>
+              </template>
+            </el-progress>
+            
+            <!-- 好评气球动画 -->
+            <div v-if="scoreResult.overall_score >= 7" class="celebration-animation">
+              <div v-for="n in 10" :key="n" class="balloon" :style="getRandomBalloonStyle()"></div>
+            </div>
+            
+            <!-- 差评哭脸动画 -->
+            <div v-if="scoreResult.overall_score < 5" class="sad-animation">
+              <div class="sad-face">😢</div>
+            </div>
+          </div>
+          
+          <div class="score-detail">
+            <div class="score-item">
+              <span class="score-label">内容评分</span>
+              <el-progress :percentage="scoreResult.content_score * 10" :color="getScoreColor" :show-text="false" />
+              <span class="score-value">{{ scoreResult.content_score.toFixed(1) }}</span>
+            </div>
+            
+            <div class="score-item">
+              <span class="score-label">语音评分</span>
+              <el-progress :percentage="scoreResult.speech_score * 10" :color="getScoreColor" :show-text="false" />
+              <span class="score-value">{{ scoreResult.speech_score.toFixed(1) }}</span>
+            </div>
+            
+            <div class="score-item">
+              <span class="score-label">视觉评分</span>
+              <el-progress :percentage="scoreResult.visual_score * 10" :color="getScoreColor" :show-text="false" />
+              <span class="score-value">{{ scoreResult.visual_score.toFixed(1) }}</span>
+            </div>
+          </div>
+          
+          <div class="dialog-footer">
+            <el-button @click="viewDetailReport">查看详细报告</el-button>
+            <el-button type="primary" @click="closeScoreDialog">返回列表</el-button>
+          </div>
+        </template>
+      </div>
+    </el-dialog>
     <div class="session-main">
       <div class="video-section">
         <video ref="videoRef" autoplay muted playsinline width="320" height="240"></video>
@@ -31,9 +90,10 @@
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { interviewSessionAPI } from '../api/interviewSession'
+import { ElMessage } from 'element-plus'
 
 export default {
   name: 'InterviewSessionView',
@@ -45,6 +105,9 @@ export default {
     const isRecording = ref(false)
     const audioLevel = ref(0)
     const feedbackList = ref([])
+    const scoreDialogVisible = ref(false)
+    const scoreLoading = ref(false)
+    const scoreResult = ref(null)
     let mediaStream = null
     let audioContext = null
     let analyser = null
@@ -142,9 +205,79 @@ export default {
     }
 
     // 结束面试
-    const endSession = () => {
+    const endSession = async () => {
       stopMedia()
+      
+      // 完成面试会话
+      try {
+        await interviewSessionAPI.completeSession(sessionId)
+        
+        // 显示评分结果弹窗
+        showScoreDialog()
+      } catch (error) {
+        console.error('结束面试失败:', error)
+        ElMessage.error('结束面试失败，请稍后重试')
+        router.push('/practice-history')
+      }
+    }
+    
+    // 显示评分结果弹窗
+    const showScoreDialog = async () => {
+      scoreDialogVisible.value = true
+      scoreLoading.value = true
+      
+      try {
+        // 获取分析结果
+        const result = await interviewSessionAPI.getAnalysis(sessionId)
+        scoreResult.value = result
+      } catch (error) {
+        console.error('获取评分结果失败:', error)
+        ElMessage.error('获取评分结果失败，请稍后查看详细报告')
+        scoreResult.value = {
+          overall_score: 0,
+          content_score: 0,
+          speech_score: 0,
+          visual_score: 0
+        }
+      } finally {
+        scoreLoading.value = false
+      }
+    }
+    
+    // 关闭评分结果弹窗
+    const closeScoreDialog = () => {
+      scoreDialogVisible.value = false
       router.push('/practice-history')
+    }
+    
+    // 查看详细报告
+    const viewDetailReport = () => {
+      router.push(`/report/${sessionId}`)
+    }
+    
+    // 获取评分颜色
+    const getScoreColor = (percentage) => {
+      if (percentage < 40) return '#F56C6C'
+      if (percentage < 70) return '#E6A23C'
+      return '#67C23A'
+    }
+    
+    // 获取随机气球样式
+    const getRandomBalloonStyle = () => {
+      const colors = ['#ff5252', '#ffb142', '#34ace0', '#33d9b2', '#706fd3']
+      const size = Math.floor(Math.random() * 30) + 30 // 30-60px
+      const left = Math.floor(Math.random() * 80) + 10 // 10-90%
+      const animationDuration = Math.floor(Math.random() * 5) + 5 // 5-10s
+      const animationDelay = Math.random() * 3 // 0-3s
+      
+      return {
+        backgroundColor: colors[Math.floor(Math.random() * colors.length)],
+        width: `${size}px`,
+        height: `${size}px`,
+        left: `${left}%`,
+        animationDuration: `${animationDuration}s`,
+        animationDelay: `${animationDelay}s`
+      }
     }
 
     // 拉取实时反馈
@@ -173,9 +306,16 @@ export default {
       isRecording,
       audioLevel,
       feedbackList,
+      scoreDialogVisible,
+      scoreLoading,
+      scoreResult,
       toggleRecording,
       endSession,
-      formatTime
+      formatTime,
+      getScoreColor,
+      getRandomBalloonStyle,
+      viewDetailReport,
+      closeScoreDialog
     }
   }
 }
@@ -262,5 +402,130 @@ export default {
   color: #aaa;
   text-align: center;
   margin-top: 2em;
+}
+
+/* 评分结果弹窗样式 */
+.score-dialog-content {
+  padding: 20px 0;
+  min-height: 300px;
+}
+
+.score-result {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  margin-bottom: 30px;
+}
+
+.progress-value {
+  display: block;
+  font-size: 28px;
+  font-weight: bold;
+  color: #303133;
+}
+
+.progress-label {
+  display: block;
+  font-size: 14px;
+  color: #909399;
+}
+
+.score-detail {
+  margin: 0 auto;
+  max-width: 400px;
+}
+
+.score-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.score-label {
+  width: 80px;
+  text-align: right;
+  margin-right: 15px;
+  color: #606266;
+}
+
+.score-value {
+  width: 40px;
+  text-align: right;
+  margin-left: 10px;
+  font-weight: bold;
+  color: #303133;
+}
+
+.score-item .el-progress {
+  flex: 1;
+}
+
+.dialog-footer {
+  margin-top: 30px;
+  text-align: center;
+}
+
+/* 气球动画 */
+.celebration-animation {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.balloon {
+  position: absolute;
+  bottom: -50px;
+  border-radius: 50%;
+  animation: float-up linear forwards;
+}
+
+@keyframes float-up {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-300px) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+/* 哭脸动画 */
+.sad-animation {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.sad-face {
+  font-size: 60px;
+  animation: sad-bounce 2s ease-in-out infinite;
+}
+
+@keyframes sad-bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
 }
 </style>

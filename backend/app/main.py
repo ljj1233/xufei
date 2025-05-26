@@ -2,18 +2,55 @@ from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 import os
 import sys
+import logging
 from pathlib import Path
 from contextlib import asynccontextmanager
 from app.db.database import engine, Base
+from sqlalchemy.orm import sessionmaker
+from app.models.user import User
+from app.core.security import get_password_hash
 
 sys.path.append(str(Path(__file__).parent.resolve()))
 
 from app.core.config import settings
 from app.api.api_v1.api import api_router
 
+# 配置日志
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 # 创建上传目录
 os.makedirs(settings.UPLOAD_FOLDER, exist_ok=True)
 
+# 初始化默认管理员账号
+def init_default_admin():
+    """初始化默认管理员账号
+    
+    检查数据库中是否已有管理员账号，如果没有则创建一个默认管理员账号
+    """
+    try:
+        Session = sessionmaker(bind=engine)
+        session = Session()
+        
+        admin = session.query(User).filter(User.is_admin == True).first()
+        if not admin:
+            # 创建管理员账号
+            admin_user = User(
+                username="admin",
+                email="admin@example.com",
+                hashed_password=get_password_hash("admin123"),
+                is_active=True,
+                is_admin=True
+            )
+            session.add(admin_user)
+            session.commit()
+            logger.info("已创建默认管理员账号: admin@example.com / admin123")
+        else:
+            logger.info(f"已存在管理员账号: {admin.email}")
+        
+        session.close()
+    except Exception as e:
+        logger.error(f"初始化管理员账号失败: {str(e)}")
 
 # 应用生命周期管理
 from contextlib import asynccontextmanager
@@ -38,6 +75,9 @@ async def lifespan(app: FastAPI):
         pool_recycle=3600,  # 连接回收时间
         pool_pre_ping=True  # 连接前ping测试
     )
+    
+    # 初始化默认管理员账号
+    init_default_admin()
     
     yield
     
