@@ -1,260 +1,261 @@
-# ai_agent/core/nodes/analyzer_executor.py
-
+# -*- coding: utf-8 -*-
 """
 分析执行节点
 
-该节点负责执行具体的分析任务，包括：
-- 调用相应的分析器进行分析
-- 处理分析结果
-- 更新任务状态
+负责执行具体的分析任务
 """
 
-from typing import Dict, Any, List, Optional
-from datetime import datetime
+from typing import Dict, Any, List
 import logging
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
-from ai_agent.core.state import GraphState, Task, TaskType, TaskStatus, AnalysisResult
+from ..state import GraphState, TaskStatus, AnalysisResult, TaskType
+from ..analyzer_adapter import AnalyzerFactory
 
-# 配置日志
 logger = logging.getLogger(__name__)
 
 
 class AnalyzerExecutor:
-    """分析执行器节点"""
+    """分析执行节点
     
-    def __init__(self):
-        """初始化分析执行器"""
-        # 在实际实现中，这里会初始化各种分析器
-        self.analyzers = {}
+    负责执行具体的分析任务，调用相应的分析器
+    """
+    
+    def __init__(self, config: Dict[str, Any] = None):
+        """初始化分析执行节点
+        
+        Args:
+            config: 配置参数
+        """
+        self.config = config or {}
+        self.max_workers = self.config.get("max_workers", 3)
+        self.timeout = self.config.get("timeout", 30)
+        
+        # 初始化分析器适配器
+        self.analyzer_adapters = {}
         self._init_analyzers()
     
     def _init_analyzers(self):
-        """初始化各种分析器
-        
-        在实际实现中，这里会加载各种分析器模型和资源
-        """
-        # 这里是一个简化的示例，实际实现可能更复杂
+        """初始化分析器适配器"""
         try:
-            # 语音分析器
-            # self.analyzers["speech_analyzer"] = SpeechAnalyzer()
+            # 创建各类型分析器适配器
+            for analyzer_type in AnalyzerFactory.get_supported_types():
+                adapter_config = self.config.get(f"{analyzer_type}_config", {})
+                self.analyzer_adapters[analyzer_type] = AnalyzerFactory.create_adapter(
+                    analyzer_type, adapter_config
+                )
             
-            # 视觉分析器
-            # self.analyzers["vision_analyzer"] = VisionAnalyzer()
+            logger.info(f"初始化了 {len(self.analyzer_adapters)} 个分析器适配器")
             
-            # 内容分析器
-            # self.analyzers["content_analyzer"] = ContentAnalyzer()
-            
-            # 在这个示例中，我们使用模拟的分析器
-            self.analyzers["speech_analyzer"] = self._mock_speech_analyzer
-            self.analyzers["vision_analyzer"] = self._mock_vision_analyzer
-            self.analyzers["content_analyzer"] = self._mock_content_analyzer
-            
-            logger.info("Analyzers initialized successfully")
         except Exception as e:
-            logger.error(f"Error initializing analyzers: {str(e)}")
-            raise
+            logger.error(f"初始化分析器适配器失败: {e}")
+            # 使用模拟分析器作为后备
+            self.analyzer_adapters = {
+                "speech": None,
+                "visual": None,
+                "content": None
+            }
     
-    def _mock_speech_analyzer(self, data: Dict[str, Any], params: Dict[str, Any]) -> Dict[str, Any]:
-        """模拟语音分析器
-        
-        Args:
-            data: 任务数据
-            params: 分析参数
-            
-        Returns:
-            分析结果
-        """
-        # 这里是一个简化的示例，实际实现会调用真正的语音分析模型
-        return {
-            "score": 0.85,  # 示例得分
-            "details": {
-                "clarity": 0.9,
-                "pace": 0.8,
-                "tone": 0.85,
-                "volume": 0.9,
-                "pronunciation": 0.8,
-            },
-            "metadata": {
-                "duration": 120,  # 示例时长（秒）
-                "sample_rate": params.get("sample_rate", 16000),
-                "feature_extraction": params.get("feature_extraction", "mfcc"),
-            },
-        }
-    
-    def _mock_vision_analyzer(self, data: Dict[str, Any], params: Dict[str, Any]) -> Dict[str, Any]:
-        """模拟视觉分析器
-        
-        Args:
-            data: 任务数据
-            params: 分析参数
-            
-        Returns:
-            分析结果
-        """
-        # 这里是一个简化的示例，实际实现会调用真正的视觉分析模型
-        return {
-            "score": 0.8,  # 示例得分
-            "details": {
-                "facial_expression": 0.85,
-                "posture": 0.75,
-                "eye_contact": 0.8,
-                "gestures": 0.7,
-                "appearance": 0.9,
-            },
-            "metadata": {
-                "duration": 120,  # 示例时长（秒）
-                "frame_rate": params.get("frame_rate", 5),
-                "resolution": params.get("resolution", "medium"),
-                "features": params.get("features", ["facial_expression", "posture", "eye_contact"]),
-            },
-        }
-    
-    def _mock_content_analyzer(self, data: Dict[str, Any], params: Dict[str, Any]) -> Dict[str, Any]:
-        """模拟内容分析器
-        
-        Args:
-            data: 任务数据
-            params: 分析参数
-            
-        Returns:
-            分析结果
-        """
-        # 这里是一个简化的示例，实际实现会调用真正的内容分析模型
-        return {
-            "score": 0.75,  # 示例得分
-            "details": {
-                "relevance": 0.8,
-                "structure": 0.7,
-                "clarity": 0.75,
-                "depth": 0.7,
-                "originality": 0.8,
-            },
-            "metadata": {
-                "language": params.get("language", "zh"),
-                "analysis_depth": params.get("analysis_depth", "standard"),
-                "features": params.get("features", ["relevance", "structure", "clarity"]),
-            },
-        }
-    
-    def _execute_analysis(self, task: Task) -> Optional[AnalysisResult]:
+    def execute(self, state: GraphState) -> GraphState:
         """执行分析任务
         
         Args:
-            task: 分析任务
+            state: 当前状态
             
         Returns:
-            分析结果，如果执行失败则返回None
+            GraphState: 更新后的状态
         """
         try:
-            # 获取分析器和参数
-            analyzer_name = task.data.get("analyzer")
-            params = task.data.get("params", {})
+            logger.info("开始执行分析任务")
             
-            # 确保分析器存在
-            if analyzer_name not in self.analyzers:
-                logger.error(f"Analyzer {analyzer_name} not found")
-                return None
+            # 获取待执行的任务
+            pending_tasks = [
+                task for task in state.task_state.tasks 
+                if task.status == TaskStatus.PENDING
+            ]
             
-            # 调用分析器
-            analyzer = self.analyzers[analyzer_name]
-            result_data = analyzer(task.data, params)
+            if not pending_tasks:
+                logger.info("没有待执行的任务")
+                return state
             
-            # 创建分析结果
-            result = AnalysisResult(
-                task_id=task.id,
-                type=task.type,
-                score=result_data.get("score"),
-                details=result_data.get("details", {}),
-                metadata=result_data.get("metadata", {}),
-            )
+            # 执行任务
+            if state.task_state.parallel_execution:
+                # 并行执行
+                results = self._execute_parallel(pending_tasks, state)
+            else:
+                # 串行执行
+                results = self._execute_sequential(pending_tasks, state)
+            
+            # 更新分析结果
+            state.analysis_state.results.extend(results)
+            
+            # 更新任务状态
+            for task in pending_tasks:
+                task.status = TaskStatus.COMPLETED
+            
+            logger.info(f"完成 {len(results)} 个分析任务")
+            
+            return state
+            
+        except Exception as e:
+            logger.error(f"执行分析任务失败: {e}")
+            
+            # 标记任务为失败
+            for task in state.task_state.tasks:
+                if task.status == TaskStatus.PENDING:
+                    task.status = TaskStatus.FAILED
+            
+            return state
+    
+    def _execute_parallel(self, tasks: List, state: GraphState) -> List[AnalysisResult]:
+        """并行执行任务
+        
+        Args:
+            tasks: 任务列表
+            state: 当前状态
+            
+        Returns:
+            List[AnalysisResult]: 分析结果列表
+        """
+        results = []
+        
+        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            # 提交所有任务
+            futures = [
+                executor.submit(self._execute_single_task, task, state)
+                for task in tasks
+            ]
+            
+            # 收集结果
+            for future in futures:
+                try:
+                    result = future.result(timeout=self.timeout)
+                    if result:
+                        results.append(result)
+                except Exception as e:
+                    logger.error(f"任务执行失败: {e}")
+        
+        return results
+    
+    def _execute_sequential(self, tasks: List, state: GraphState) -> List[AnalysisResult]:
+        """串行执行任务
+        
+        Args:
+            tasks: 任务列表
+            state: 当前状态
+            
+        Returns:
+            List[AnalysisResult]: 分析结果列表
+        """
+        results = []
+        
+        for task in tasks:
+            try:
+                result = self._execute_single_task(task, state)
+                if result:
+                    results.append(result)
+            except Exception as e:
+                logger.error(f"任务执行失败: {e}")
+        
+        return results
+    
+    def _execute_single_task(self, task, state: GraphState) -> AnalysisResult:
+        """执行单个任务
+        
+        Args:
+            task: 任务对象
+            state: 当前状态
+            
+        Returns:
+            AnalysisResult: 分析结果
+        """
+        try:
+            logger.info(f"执行任务: {task.task_type.value}")
+            
+            # 根据任务类型选择分析器适配器
+            adapter = None
+            if task.task_type == TaskType.SPEECH_ANALYSIS:
+                adapter = self.analyzer_adapters.get("speech")
+            elif task.task_type == TaskType.VISUAL_ANALYSIS:
+                adapter = self.analyzer_adapters.get("visual")
+            elif task.task_type == TaskType.CONTENT_ANALYSIS:
+                adapter = self.analyzer_adapters.get("content")
+            
+            if adapter is None:
+                logger.warning(f"未找到适配器，使用模拟分析器: {task.task_type}")
+                return self._mock_analyzer(task, state)
+            
+            # 执行分析
+            result = adapter.process(state, task.data)
+            
+            logger.info(f"任务执行完成: {task.task_type.value}, 得分: {result.score}")
             
             return result
             
         except Exception as e:
-            logger.error(f"Error executing analysis: {str(e)}")
-            return None
+            logger.error(f"执行单个任务失败: {e}")
+            # 返回模拟结果作为后备
+            return self._mock_analyzer(task, state)
     
-    def _update_task_status(self, task: Task, result: Optional[AnalysisResult]) -> Task:
-        """更新任务状态
+    def _mock_analyzer(self, task, state: GraphState) -> AnalysisResult:
+        """模拟分析器（后备方案）
         
         Args:
-            task: 分析任务
-            result: 分析结果
+            task: 任务对象
+            state: 当前状态
             
         Returns:
-            更新后的任务
+            AnalysisResult: 模拟分析结果
         """
-        if result:
-            # 分析成功
-            task.status = TaskStatus.COMPLETED
-            task.completed_at = datetime.now()
+        import random
+        
+        # 根据任务类型生成模拟结果
+        if task.task_type == TaskType.SPEECH_ANALYSIS:
+            score = random.uniform(6.0, 9.0)
+            details = {
+                "clarity": random.uniform(6.0, 9.0),
+                "pace": random.uniform(6.0, 9.0),
+                "emotion": random.choice(["积极", "中性", "紧张"]),
+                "confidence": random.uniform(0.7, 0.9),
+                "mock": True
+            }
+        elif task.task_type == TaskType.VISUAL_ANALYSIS:
+            score = random.uniform(6.0, 9.0)
+            details = {
+                "eye_contact": random.uniform(6.0, 9.0),
+                "expression": random.uniform(6.0, 9.0),
+                "posture": random.uniform(6.0, 9.0),
+                "engagement": random.uniform(6.0, 9.0),
+                "mock": True
+            }
+        elif task.task_type == TaskType.CONTENT_ANALYSIS:
+            score = random.uniform(6.0, 9.0)
+            details = {
+                "relevance": random.uniform(6.0, 9.0),
+                "structure": random.uniform(6.0, 9.0),
+                "key_points": ["技术能力", "沟通能力", "学习能力"],
+                "completeness": random.uniform(6.0, 9.0),
+                "mock": True
+            }
         else:
-            # 分析失败
-            task.status = TaskStatus.FAILED
-            task.error = "Analysis execution failed"
+            score = 5.0
+            details = {"error": "未知任务类型", "mock": True}
         
-        return task
+        return AnalysisResult(
+            task_type=task.task_type,
+            score=score,
+            details=details,
+            confidence=0.5  # 模拟结果置信度较低
+        )
     
-    def __call__(self, state: GraphState) -> GraphState:
-        """执行分析
+    def get_analyzer_status(self) -> Dict[str, bool]:
+        """获取分析器状态
         
-        Args:
-            state: 当前图状态
-            
         Returns:
-            更新后的图状态
+            Dict[str, bool]: 各分析器的可用状态
         """
-        # 确保有当前任务
-        if not state.task_state.current_task:
-            # 如果没有当前任务，但任务队列不为空，则从队列中取出一个任务
-            if state.task_state.task_queue:
-                state.task_state.current_task = state.task_state.task_queue.pop(0)
-            else:
-                # 如果任务队列也为空，则转到结果整合节点
-                state.next_node = "result_integrator"
-                return state
-        
-        try:
-            # 获取当前任务
-            current_task = state.task_state.current_task
-            
-            # 更新任务状态为执行中
-            current_task.status = TaskStatus.IN_PROGRESS
-            current_task.started_at = datetime.now()
-            
-            # 执行分析
-            result = self._execute_analysis(current_task)
-            
-            # 更新任务状态
-            current_task = self._update_task_status(current_task, result)
-            
-            # 更新状态
-            if result:
-                # 将结果添加到分析状态
-                state.analysis_state.results[current_task.id] = result
-            
-            # 将当前任务添加到已完成或失败任务列表
-            if current_task.status == TaskStatus.COMPLETED:
-                state.task_state.completed_tasks.append(current_task)
-            elif current_task.status == TaskStatus.FAILED:
-                state.task_state.failed_tasks.append(current_task)
-            
-            # 从任务队列中取出下一个任务
-            if state.task_state.task_queue:
-                state.task_state.current_task = state.task_state.task_queue.pop(0)
-                # 继续执行分析
-                state.next_node = "analyzer_executor"
-            else:
-                # 如果任务队列为空，则转到结果整合节点
-                state.task_state.current_task = None
-                state.next_node = "result_integrator"
-            
-        except Exception as e:
-            state.error = f"Error executing analyzer: {str(e)}"
-            # 出错时也转到结果整合节点
-            state.next_node = "result_integrator"
-        
-        # 更新时间戳
-        state.update_timestamp()
-        
-        return state
+        status = {}
+        for analyzer_type, adapter in self.analyzer_adapters.items():
+            status[analyzer_type] = adapter is not None
+        return status

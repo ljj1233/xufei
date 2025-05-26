@@ -15,10 +15,14 @@ import json
 import time
 import asyncio
 import os
-from datetime import datetime
+import pickle
+from datetime import datetime, timedelta
 from dataclasses import dataclass, field, asdict
 from collections import defaultdict, deque
+from pathlib import Path
 import logging
+
+from .state import GraphState, Task, AnalysisResult, TaskStatus
 
 
 @dataclass
@@ -90,12 +94,32 @@ class StateManager:
         self.sessions: Dict[str, SessionState] = {}
         self.global_state = GlobalState()
         
+        # LangGraph状态存储
+        self.graph_states: Dict[str, GraphState] = {}
+        self.graph_state_cache: Dict[str, GraphState] = {}
+        self.cache_timestamps: Dict[str, float] = {}
+        self.cache_ttl = 3600  # 缓存1小时
+        
+        # 状态历史
+        self.graph_state_history: Dict[str, List[GraphState]] = {}
+        self.max_history_size = 10
+        
         # 历史记录（内存中保留最近的记录）
         self.session_history = deque(maxlen=1000)
         self.task_history = deque(maxlen=5000)
         
         # 状态变更监听器
         self.state_listeners = []
+        
+        # 性能统计
+        self.performance_stats = {
+            "save_count": 0,
+            "load_count": 0,
+            "cache_hits": 0,
+            "cache_misses": 0,
+            "total_save_time": 0.0,
+            "total_load_time": 0.0
+        }
         
         # 加载已保存的状态
         self._load_state()
@@ -603,3 +627,399 @@ class StateManager:
         }
         
         return statistics
+    
+    def cleanup(self):
+        """清理资源"""
+        try:
+            # 停止自动保存
+            if hasattr(self, '_auto_save_task') and self._auto_save_task:
+                self._auto_save_task.cancel()
+            
+            # 保存当前状态
+            self.save_state()
+            
+            # 优化存储
+            self.optimize_storage()
+            
+            self.logger.info("状态管理器清理完成")
+            
+        except Exception as e:
+            self.logger.error(f"状态管理器清理失败: {e}")
+    
+    # LangGraph状态管理方法
+    
+    def save_graph_state(self, session_id: str, state: GraphState, 
+                        format: str = "pickle") -> bool:
+        """保存LangGraph状态
+        
+        Args:
+            session_id: 会话ID
+            state: 要保存的图状态
+            format: 保存格式 ('pickle' 或 'json')
+            
+        Returns:
+            bool: 保存是否成功
+        """
+        start_time = time.time()
+        
+        try:
+            # 创建会话目录
+            session_dir = Path(self.state_dir) / "graph_states" / session_id
+            session_dir.mkdir(parents=True, exist_ok=True)
+            
+            # 生成文件名
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"graph_state_{timestamp}.{format}"
+            filepath = session_dir / filename
+            
+            # 保存状态
+            if format == "pickle":
+                with open(filepath, 'wb') as f:
+                    pickle.dump(state, f)
+            elif format == "json":
+                with open(filepath, 'w', encoding='utf-8') as f:
+                    json.dump(self._graph_state_to_dict(state), f, 
+                             ensure_ascii=False, indent=2)
+            else:
+                raise ValueError(f"不支持的格式: {format}")
+            
+            # 更新缓存
+            self.graph_state_cache[session_id] = state
+            self.cache_timestamps[session_id] = time.time()
+            
+            # 更新历史
+            if session_id not in self.graph_state_history:
+                self.graph_state_history[session_id] = []
+            
+            self.graph_state_history[session_id].append(state)
+            if len(self.graph_state_history[session_id]) > self.max_history_size:
+                self.graph_state_history[session_id].pop(0)
+            
+            # 更新统计
+            self.performance_stats["save_count"] += 1
+            self.performance_stats["total_save_time"] += time.time() - start_time
+            
+            self.logger.debug(f"图状态保存成功: {session_id}")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"保存图状态失败: {e}")
+            return False
+    
+    def load_graph_state(self, session_id: str, 
+                        timestamp: Optional[str] = None) -> Optional[GraphState]:
+        """加载LangGraph状态
+        
+        Args:
+            session_id: 会话ID
+            timestamp: 时间戳，如果为None则加载最新状态
+            
+        Returns:
+            GraphState: 加载的状态，失败时返回None
+        """
+        start_time = time.time()
+        
+        try:
+            # 检查缓存
+            if (session_id in self.graph_state_cache and 
+                self._is_cache_valid(session_id)):
+                self.performance_stats["cache_hits"] += 1
+                return self.graph_state_cache[session_id]
+            
+            self.performance_stats["cache_misses"] += 1
+            
+            # 从文件加载
+            session_dir = Path(self.state_dir) / "graph_states" / session_id
+            if not session_dir.exists():
+                return None
+            
+            # 查找状态文件
+            state_files = list(session_dir.glob("graph_state_*.pickle")) + \
+                         list(session_dir.glob("graph_state_*.json"))
+            
+            if not state_files:
+                return None
+            
+            # 选择文件
+            if timestamp:
+                target_file = None
+                for file in state_files:
+                    if timestamp in file.name:
+                        target_file = file
+                        break
+                if not target_file:
+                    return None
+            else:
+                # 选择最新文件
+                target_file = max(state_files, key=lambda f: f.stat().st_mtime)
+            
+            # 加载状态
+            if target_file.suffix == ".pickle":
+                with open(target_file, 'rb') as f:
+                    state = pickle.load(f)
+            elif target_file.suffix == ".json":
+                with open(target_file, 'r', encoding='utf-8') as f:
+                    state_dict = json.load(f)
+                    state = self._dict_to_graph_state(state_dict)
+            else:
+                return None
+            
+            # 更新缓存
+            self.graph_state_cache[session_id] = state
+            self.cache_timestamps[session_id] = time.time()
+            
+            # 更新统计
+            self.performance_stats["load_count"] += 1
+            self.performance_stats["total_load_time"] += time.time() - start_time
+            
+            self.logger.debug(f"图状态加载成功: {session_id}")
+            return state
+            
+        except Exception as e:
+            self.logger.error(f"加载图状态失败: {e}")
+            return None
+    
+    def get_graph_state_history(self, session_id: str) -> List[GraphState]:
+        """获取图状态历史
+        
+        Args:
+            session_id: 会话ID
+            
+        Returns:
+            List[GraphState]: 状态历史列表
+        """
+        return self.graph_state_history.get(session_id, [])
+    
+    def rollback_graph_state(self, session_id: str, steps: int = 1) -> Optional[GraphState]:
+        """回滚图状态
+        
+        Args:
+            session_id: 会话ID
+            steps: 回滚步数
+            
+        Returns:
+            GraphState: 回滚后的状态
+        """
+        history = self.graph_state_history.get(session_id, [])
+        if len(history) <= steps:
+            return None
+        
+        target_state = history[-(steps + 1)]
+        
+        # 更新缓存
+        self.graph_state_cache[session_id] = target_state
+        self.cache_timestamps[session_id] = time.time()
+        
+        self.logger.info(f"图状态回滚成功: {session_id}, 步数: {steps}")
+        return target_state
+    
+    def clear_graph_cache(self, session_id: Optional[str] = None):
+        """清理图状态缓存
+        
+        Args:
+            session_id: 会话ID，如果为None则清理所有缓存
+        """
+        if session_id:
+            self.graph_state_cache.pop(session_id, None)
+            self.cache_timestamps.pop(session_id, None)
+        else:
+            self.graph_state_cache.clear()
+            self.cache_timestamps.clear()
+        
+        self.logger.debug(f"图状态缓存清理完成: {session_id or 'all'}")
+    
+    def optimize_storage(self):
+        """优化存储
+        
+        压缩旧文件，清理重复状态等
+        """
+        try:
+            # 清理过期缓存
+            current_time = time.time()
+            expired_sessions = []
+            
+            for session_id, timestamp in self.cache_timestamps.items():
+                if current_time - timestamp > self.cache_ttl:
+                    expired_sessions.append(session_id)
+            
+            for session_id in expired_sessions:
+                self.graph_state_cache.pop(session_id, None)
+                self.cache_timestamps.pop(session_id, None)
+            
+            # 清理旧状态文件
+            self._cleanup_old_graph_states()
+            
+            self.logger.info(f"存储优化完成，清理了 {len(expired_sessions)} 个过期缓存")
+            
+        except Exception as e:
+            self.logger.error(f"存储优化失败: {e}")
+    
+    def get_performance_stats(self) -> Dict[str, Any]:
+        """获取性能统计
+        
+        Returns:
+            Dict[str, Any]: 性能统计信息
+        """
+        stats = self.performance_stats.copy()
+        
+        # 计算平均时间
+        if stats["save_count"] > 0:
+            stats["avg_save_time"] = stats["total_save_time"] / stats["save_count"]
+        else:
+            stats["avg_save_time"] = 0.0
+        
+        if stats["load_count"] > 0:
+            stats["avg_load_time"] = stats["total_load_time"] / stats["load_count"]
+        else:
+            stats["avg_load_time"] = 0.0
+        
+        # 计算缓存命中率
+        total_requests = stats["cache_hits"] + stats["cache_misses"]
+        if total_requests > 0:
+            stats["cache_hit_rate"] = stats["cache_hits"] / total_requests
+        else:
+            stats["cache_hit_rate"] = 0.0
+        
+        return stats
+    
+    def _is_cache_valid(self, session_id: str) -> bool:
+        """检查缓存是否有效
+        
+        Args:
+            session_id: 会话ID
+            
+        Returns:
+            bool: 缓存是否有效
+        """
+        if session_id not in self.cache_timestamps:
+            return False
+        
+        return time.time() - self.cache_timestamps[session_id] < self.cache_ttl
+    
+    def _cleanup_old_graph_states(self, days: int = 7):
+        """清理旧的图状态文件
+        
+        Args:
+            days: 保留天数
+        """
+        cutoff_time = datetime.now() - timedelta(days=days)
+        graph_states_dir = Path(self.state_dir) / "graph_states"
+        
+        if not graph_states_dir.exists():
+            return
+        
+        for session_dir in graph_states_dir.iterdir():
+            if not session_dir.is_dir():
+                continue
+            
+            for state_file in session_dir.glob("graph_state_*"):
+                file_time = datetime.fromtimestamp(state_file.stat().st_mtime)
+                if file_time < cutoff_time:
+                    try:
+                        state_file.unlink()
+                    except Exception as e:
+                        self.logger.warning(f"删除旧图状态文件失败: {e}")
+    
+    def _graph_state_to_dict(self, state: GraphState) -> Dict[str, Any]:
+        """将图状态转换为字典
+        
+        Args:
+            state: 图状态
+            
+        Returns:
+            Dict[str, Any]: 状态字典
+        """
+        return {
+            "current_task": self._task_to_dict(state.current_task) if state.current_task else None,
+            "tasks": [self._task_to_dict(task) for task in state.tasks],
+            "analysis_results": [self._result_to_dict(result) for result in state.analysis_results],
+            "user_context": state.user_context.__dict__ if state.user_context else None,
+            "feedback_state": state.feedback_state.__dict__ if state.feedback_state else None,
+            "analysis_state": state.analysis_state.__dict__ if state.analysis_state else None,
+            "task_state": state.task_state.__dict__ if state.task_state else None,
+            "metadata": state.metadata
+        }
+    
+    def _dict_to_graph_state(self, state_dict: Dict[str, Any]) -> GraphState:
+        """将字典转换为图状态
+        
+        Args:
+            state_dict: 状态字典
+            
+        Returns:
+            GraphState: 图状态
+        """
+        state = GraphState()
+        
+        # 恢复任务
+        if state_dict.get("current_task"):
+            state.current_task = self._dict_to_task(state_dict["current_task"])
+        
+        state.tasks = [self._dict_to_task(task_dict) 
+                      for task_dict in state_dict.get("tasks", [])]
+        
+        # 恢复分析结果
+        state.analysis_results = [self._dict_to_result(result_dict)
+                                 for result_dict in state_dict.get("analysis_results", [])]
+        
+        # 恢复其他状态
+        state.metadata = state_dict.get("metadata", {})
+        
+        return state
+    
+    def _task_to_dict(self, task: Task) -> Dict[str, Any]:
+        """将任务转换为字典"""
+        return {
+            "id": task.id,
+            "type": task.type.value,
+            "priority": task.priority.value,
+            "status": task.status.value,
+            "data": task.data,
+            "created_at": task.created_at.isoformat(),
+            "updated_at": task.updated_at.isoformat() if task.updated_at else None,
+            "metadata": task.metadata
+        }
+    
+    def _dict_to_task(self, task_dict: Dict[str, Any]) -> Task:
+        """将字典转换为任务"""
+        from .state import TaskType, TaskPriority
+        
+        task = Task(
+            type=TaskType(task_dict["type"]),
+            priority=TaskPriority(task_dict["priority"]),
+            data=task_dict["data"]
+        )
+        task.id = task_dict["id"]
+        task.status = TaskStatus(task_dict["status"])
+        task.created_at = datetime.fromisoformat(task_dict["created_at"])
+        if task_dict.get("updated_at"):
+            task.updated_at = datetime.fromisoformat(task_dict["updated_at"])
+        task.metadata = task_dict.get("metadata", {})
+        
+        return task
+    
+    def _result_to_dict(self, result: AnalysisResult) -> Dict[str, Any]:
+        """将分析结果转换为字典"""
+        return {
+            "task_id": result.task_id,
+            "task_type": result.task_type.value,
+            "score": result.score,
+            "confidence": result.confidence,
+            "details": result.details,
+            "timestamp": result.timestamp.isoformat(),
+            "metadata": result.metadata
+        }
+    
+    def _dict_to_result(self, result_dict: Dict[str, Any]) -> AnalysisResult:
+        """将字典转换为分析结果"""
+        from .state import TaskType
+        
+        return AnalysisResult(
+            task_id=result_dict["task_id"],
+            task_type=TaskType(result_dict["task_type"]),
+            score=result_dict["score"],
+            confidence=result_dict["confidence"],
+            details=result_dict["details"],
+            timestamp=datetime.fromisoformat(result_dict["timestamp"]),
+            metadata=result_dict.get("metadata", {})
+        )
