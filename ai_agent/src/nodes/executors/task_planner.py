@@ -15,7 +15,7 @@ from datetime import datetime
 from copy import deepcopy
 import logging
 
-from ...core.state import GraphState, Task, TaskType, TaskPriority, TaskStatus
+from ...core.workflow.state import GraphState, Task, TaskType, TaskPriority, TaskStatus
 
 logger = logging.getLogger(__name__)
 

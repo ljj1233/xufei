@@ -13,7 +13,7 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime
 import logging
 
-from ...core.state import GraphState, TaskType, AnalysisResult
+from ...core.workflow.state import GraphState, TaskType, AnalysisResult
 
 # 配置日志
 logger = logging.getLogger(__name__)

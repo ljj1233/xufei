@@ -11,8 +11,7 @@
 
 from typing import Dict, Any, List, Set
 from datetime import datetime
-
-from ...core.state import GraphState, TaskType
+from ...core.workflow.state import GraphState, TaskType
 
 
 class StrategyDecider:

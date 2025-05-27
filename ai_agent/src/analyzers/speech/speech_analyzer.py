@@ -7,10 +7,10 @@ import numpy as np
 import time
 from collections import deque
 
-from ..core.analyzer import Analyzer
-from ..core.config import AgentConfig
-from ..services.xunfei_service import XunFeiService
-from ..core.utils import normalize_score, weighted_average
+from ai_agent.src.core.analyzer import Analyzer
+from ai_agent.src.core.config import AgentConfig
+from ai_agent.src.services.xunfei_service import XunFeiService
+from ai_agent.src.core.utils import normalize_score, weighted_average
 from .audio_feature_extractor import AudioFeatureExtractor
 
 # 获取日志记录器

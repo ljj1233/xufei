@@ -11,8 +11,8 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import time
 
-from ai_agent.src.core.workflow.state import GraphState, TaskStatus, AnalysisResult, TaskType
-from ai_agent.src.nodes.analyzer_adapter import AnalyzerFactory
+from ...core.workflow.state import GraphState, TaskStatus, AnalysisResult, TaskType
+from ai_agent.src.analyzers.base.analyzer_adapter import AnalyzerFactory
 
 logger = logging.getLogger(__name__)
 

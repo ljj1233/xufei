@@ -7,8 +7,8 @@
 from typing import Dict, Any, Optional, Tuple, List, Callable
 import logging
 
-from ai_agent.src.core.workflow.state import GraphState, Task, AnalysisResult
-from ..learning.adaptation_manager_refactored import AdaptationManager
+from ...core.workflow.state import GraphState, Task, AnalysisResult
+from ai_agent.src.learning.adaptation.adaptation_manager_refactored import AdaptationManager
 
 
 class AdaptationNode:

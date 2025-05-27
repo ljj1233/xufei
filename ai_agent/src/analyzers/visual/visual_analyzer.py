@@ -7,9 +7,9 @@ import numpy as np
 import time
 from collections import deque
 
-from ..core.analyzer import Analyzer
-from ..core.config import AgentConfig
-from ..core.utils import normalize_score, weighted_average
+from ai_agent.src.core.analyzer import Analyzer
+from ai_agent.src.core.config import AgentConfig
+from ai_agent.src.core.utils import normalize_score, weighted_average
 
 
 class VisualAnalyzer(Analyzer):
