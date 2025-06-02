@@ -189,7 +189,10 @@ export class InterviewWebSocket {
   connect() {
     try {
       const userStore = useUserStore()
-      const wsUrl = `ws://localhost:8000/api/v1/interview-sessions/${this.sessionId}/ws?token=${userStore.token}`
+      // 使用环境变量中的API_BASE_URL，将http://替换为ws://
+      const wsProtocol = API_BASE_URL.startsWith('https') ? 'wss://' : 'ws://'
+      const wsBaseUrl = API_BASE_URL.replace(/^https?:\/\//, '')
+      const wsUrl = `${wsProtocol}${wsBaseUrl}/api/v1/interview-sessions/${this.sessionId}/ws?token=${userStore.token}`
       
       this.ws = new WebSocket(wsUrl)
       

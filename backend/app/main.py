@@ -82,9 +82,23 @@ app = FastAPI(
 )
 
 # 设置CORS
+# 配置允许的前端源
+origins = [
+    "http://localhost:5173",  # Vite默认开发服务器
+    "http://localhost:4173",  # Vite预览服务器
+    "http://localhost:3000",  # 其他可能的前端开发服务器
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:4173",
+    "http://127.0.0.1:3000",
+]
+
+# 如果是开发环境，允许所有源
+if os.getenv("ENVIRONMENT") == "development":
+    origins = ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 在生产环境中应该限制来源
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
