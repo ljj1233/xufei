@@ -6,9 +6,15 @@ import json
 from typing import Dict, Any, List, Optional
 import torch
 from transformers import AutoTokenizer, AutoModel
+import logging
+import traceback
+import time
 
 from app.core.config import settings
 from app.services.xunfei_service import xunfei_service
+
+# 配置日志记录器
+logger = logging.getLogger(__name__)
 
 
 def analyze_interview(file_path: str, file_type: str) -> Dict[str, Any]:
@@ -23,9 +29,14 @@ def analyze_interview(file_path: str, file_type: str) -> Dict[str, Any]:
     Returns:
         Dict[str, Any]: 分析结果
     """
+    start_time = time.time()
+    logger.info(f"开始分析面试文件: {file_path}, 类型: {file_type}")
+    
     # 检查文件是否存在
     if not os.path.exists(file_path):
-        raise FileNotFoundError(f"文件不存在: {file_path}")
+        error_msg = f"文件不存在: {file_path}"
+        logger.error(error_msg)
+        raise FileNotFoundError(error_msg)
     
     # 初始化结果
     result = {
@@ -35,23 +46,48 @@ def analyze_interview(file_path: str, file_type: str) -> Dict[str, Any]:
         "overall": {}
     }
     
-    # 提取音频特征
-    speech_features = extract_speech_features(file_path)
-    result["speech"] = analyze_speech(speech_features)
+    try:
+        # 提取音频特征
+        logger.info(f"开始提取音频特征: {file_path}")
+        speech_features = extract_speech_features(file_path)
+        result["speech"] = analyze_speech(speech_features)
+        logger.info(f"音频特征分析完成: 清晰度={result['speech'].get('clarity')}, 语速={result['speech'].get('pace')}")
+        
+        # 如果是视频，提取视觉特征
+        if file_type == "video":
+            logger.info(f"开始提取视觉特征: {file_path}")
+            visual_features = extract_visual_features(file_path)
+            result["visual"] = analyze_visual(visual_features)
+            logger.info(f"视觉特征分析完成: 眼神接触={result['visual'].get('eye_contact')}")
+        else:
+            logger.info("跳过视觉分析（非视频文件）")
+            result["visual"] = {
+                "facial_expressions": {},
+                "eye_contact": 5.0,
+                "body_language": {}
+            }
+        
+        # 提取文本内容（从语音转文本）
+        logger.info(f"开始语音转文本: {file_path}")
+        text_content = speech_to_text(file_path)
+        result["content"] = analyze_content(text_content)
+        logger.info(f"内容分析完成: 相关性={result['content'].get('relevance')}, 结构性={result['content'].get('structure')}")
+        
+        # 综合分析
+        logger.info("开始综合分析")
+        result["overall"] = generate_overall_analysis(result)
+        logger.info(f"综合分析完成: 总分={result['overall'].get('score')}")
+        
+        elapsed_time = time.time() - start_time
+        logger.info(f"面试分析完成，耗时: {elapsed_time:.2f}秒")
+        
+        return result
     
-    # 如果是视频，提取视觉特征
-    if file_type == "video":
-        visual_features = extract_visual_features(file_path)
-        result["visual"] = analyze_visual(visual_features)
-    
-    # 提取文本内容（从语音转文本）
-    text_content = speech_to_text(file_path)
-    result["content"] = analyze_content(text_content)
-    
-    # 综合分析
-    result["overall"] = generate_overall_analysis(result)
-    
-    return result
+    except Exception as e:
+        elapsed_time = time.time() - start_time
+        error_msg = f"面试分析失败，耗时: {elapsed_time:.2f}秒, 错误: {str(e)}"
+        logger.error(f"{error_msg}\n{traceback.format_exc()}")
+        raise
 
 
 def extract_speech_features(file_path: str) -> Dict[str, Any]:

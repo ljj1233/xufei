@@ -1,5 +1,4 @@
-# ai_agent/core/state.py
-
+# -*- coding: utf-8 -*-
 """
 智能体状态定义模块
 

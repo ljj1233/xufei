@@ -15,7 +15,7 @@ import logging
 from enum import Enum, auto
 from collections import deque
 
-from ai_agent.src.core.workflow.state import Task, AnalysisResult, GraphState
+from ...core.workflow.state import Task, AnalysisResult, GraphState
 
 
 class AdaptationType(Enum):

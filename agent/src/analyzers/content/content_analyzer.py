@@ -1,11 +1,12 @@
-# ai_agent/analyzers/content_analyzer.py
+# ai_agent/analyzers/content/content_analyzer.py
 
 from typing import Dict, Any, Optional, List
+import logging
 import re
 
-from ai_agent.src.core.analyzer import Analyzer
-from ai_agent.src.core.config import AgentConfig
-from ai_agent.src.core.utils import normalize_score, weighted_average
+from ...core.analyzer import Analyzer
+from ...core.system.config import AgentConfig
+from ...core.utils import normalize_score, weighted_average
 
 
 class ContentAnalyzer(Analyzer):

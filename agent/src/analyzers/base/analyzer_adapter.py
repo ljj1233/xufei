@@ -10,9 +10,9 @@ from abc import ABC, abstractmethod
 import logging
 
 from .state import GraphState, AnalysisResult, TaskType
-from ..analyzers.speech_analyzer import SpeechAnalyzer
-from ..analyzers.visual_analyzer import VisualAnalyzer
-from ..analyzers.content_analyzer import ContentAnalyzer
+from ..speech.speech_analyzer import SpeechAnalyzer
+from ..visual.visual_analyzer import VisualAnalyzer
+from ..content.content_analyzer import ContentAnalyzer
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +93,7 @@ class SpeechAnalyzerAdapter(AnalyzerAdapter):
     
     def _create_analyzer(self):
         """创建语音分析器实例"""
-        from ..core.config import AgentConfig
+        from ...core.system.config import AgentConfig
         agent_config = AgentConfig() if not self.config else AgentConfig(**self.config)
         return SpeechAnalyzer(agent_config)
     
@@ -210,7 +210,7 @@ class VisualAnalyzerAdapter(AnalyzerAdapter):
     
     def _create_analyzer(self):
         """创建视觉分析器实例"""
-        from ..core.config import AgentConfig
+        from ...core.system.config import AgentConfig
         agent_config = AgentConfig() if not self.config else AgentConfig(**self.config)
         return VisualAnalyzer(agent_config)
     
@@ -279,7 +279,7 @@ class ContentAnalyzerAdapter(AnalyzerAdapter):
     
     def _create_analyzer(self):
         """创建内容分析器实例"""
-        from ..core.config import AgentConfig
+        from ...core.system.config import AgentConfig
         agent_config = AgentConfig() if not self.config else AgentConfig(**self.config)
         return ContentAnalyzer(agent_config)
     

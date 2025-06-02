@@ -12,7 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 import time
 
 from ...core.workflow.state import GraphState, TaskStatus, AnalysisResult, TaskType
-from ai_agent.src.analyzers.base.analyzer_adapter import AnalyzerFactory
+from ...analyzers.base.analyzer_adapter import AnalyzerFactory
 
 logger = logging.getLogger(__name__)
 

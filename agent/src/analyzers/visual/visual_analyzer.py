@@ -1,15 +1,18 @@
-# ai_agent/analyzers/visual_analyzer.py
+# ai_agent/analyzers/visual/visual_analyzer.py
 
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Tuple
 import os
 import cv2
 import numpy as np
 import time
 from collections import deque
+import logging
+from datetime import datetime
+import json
 
-from ai_agent.src.core.analyzer import Analyzer
-from ai_agent.src.core.config import AgentConfig
-from ai_agent.src.core.utils import normalize_score, weighted_average
+from ...core.analyzer import Analyzer
+from ...core.system.config import AgentConfig
+from ...core.utils import normalize_score, weighted_average
 
 
 class VisualAnalyzer(Analyzer):
