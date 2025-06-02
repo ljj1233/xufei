@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings
-from typing import Optional, Dict, Any, List, ClassVar
+from typing import Optional, Dict, Any, List
 import os
 from dotenv import load_dotenv
 
@@ -29,9 +29,9 @@ class Settings(BaseSettings):
     DB_ECHO: bool = False  # 控制是否打印SQL语句，默认关闭
 
     # 数据库连接池配置
-    DB_POOL_SIZE: ClassVar[int] = 20  # 连接池大小
-    DB_MAX_OVERFLOW: ClassVar[int] = 20  # 最大溢出连接数
-    DB_POOL_TIMEOUT: ClassVar[int] = 30  # 连接池等待超时时间，单位秒
+    DB_POOL_SIZE: int = int(os.getenv("DB_POOL_SIZE", "20"))  # 连接池大小
+    DB_MAX_OVERFLOW: int = int(os.getenv("DB_MAX_OVERFLOW", "20"))  # 最大溢出连接数
+    DB_POOL_TIMEOUT: int = int(os.getenv("DB_POOL_TIMEOUT", "30"))  # 连接池等待超时时间，单位秒
     
     # 安全配置
     SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-here")

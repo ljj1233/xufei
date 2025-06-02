@@ -41,7 +41,6 @@ class Base(DeclarativeBase):
     - 通用的JSON序列化方法
     """
     # 不要覆盖metadata，保持DeclarativeBase默认行为
-    # metadata = None  # 删除此行，避免Base.metadata为None
 
     @declared_attr
     def __tablename__(cls) -> str:
@@ -71,11 +70,9 @@ def get_db():
     while retry_count < max_retries:
         try:
             db = SessionLocal()
-            print("hello")
             # 测试连接是否有效
-            # db.execute(text("SELECT 1"))
-            # logger.debug("数据库会话创建成功")
-            print("数据库会话创建成功")
+            db.execute(text("SELECT 1"))
+            logger.debug("数据库会话创建成功")
             try:
                 yield db
             finally:

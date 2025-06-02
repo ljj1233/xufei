@@ -65,24 +65,12 @@ async def lifespan(app: FastAPI):
     # 注意：在生产环境中应该使用Alembic进行数据库迁移
     Base.metadata.create_all(bind=engine, checkfirst=True)
     
-    # 初始化数据库连接池
-    from sqlalchemy.pool import QueuePool
-    engine.pool = QueuePool(
-        creator=engine.connect,
-        pool_size=settings.DB_POOL_SIZE,
-        max_overflow=settings.DB_MAX_OVERFLOW,
-        pool_timeout=settings.DB_POOL_TIMEOUT,
-        pool_recycle=3600,  # 连接回收时间
-        pool_pre_ping=True  # 连接前ping测试
-    )
-    
     # 初始化默认管理员账号
     init_default_admin()
     
     yield
     
     # 应用关闭时的清理操作
-    engine.pool.dispose()
     # 关闭所有数据库连接
     engine.dispose()
 
@@ -116,6 +104,30 @@ def read_root():
         dict: 应用信息
     """
     return {"message": "欢迎使用多模态面试评测智能体API"}
+
+
+@app.get("/api/v1/admin/db-status")
+async def check_db_pool_status():
+    """检查数据库连接池状态
+    
+    Returns:
+        dict: 连接池统计信息
+    """
+    try:
+        stats = {
+            "pool_size": engine.pool.size(),
+            "checkedin": engine.pool.checkedin(),
+            "overflow": engine.pool.overflow(),
+            "checkedout": engine.pool.checkedout(),
+            "status": "healthy"
+        }
+        return stats
+    except Exception as e:
+        logger.error(f"获取连接池状态失败: {str(e)}")
+        return {
+            "status": "error",
+            "message": str(e)
+        }
 
 
 if __name__ == "__main__":
