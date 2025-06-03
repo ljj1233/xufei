@@ -18,4 +18,3 @@ class User(Base):
     
     # 使用字符串引用模型名称，避免循环导入问题
     interviews = relationship("Interview", back_populates="user", cascade="all, delete-orphan", passive_deletes=True)
-    interview_sessions = relationship("InterviewSession", back_populates="user", cascade="all, delete-orphan", passive_deletes=True)

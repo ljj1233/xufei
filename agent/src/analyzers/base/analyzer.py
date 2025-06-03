@@ -1,4 +1,4 @@
-# ai_agent/core/analyzer.py
+# agent/core/analyzer.py
 
 from typing import Dict, Any, Optional
 from abc import ABC, abstractmethod

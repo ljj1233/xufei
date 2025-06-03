@@ -1,4 +1,4 @@
-# ai_agent/core/intelligent_agent.py
+# agent/core/intelligent_agent.py
 
 """
 智能面试代理模块
@@ -14,8 +14,8 @@ from datetime import datetime
 import logging
 import json
 
-from ai_agent.core.langgraph_agent import LangGraphAgent
-from ai_agent.core.state import TaskType, TaskPriority
+from agent.core.langgraph_agent import LangGraphAgent
+from agent.core.state import TaskType, TaskPriority
 
 # 配置日志
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')

@@ -1,4 +1,4 @@
-# ai_agent/core/graph.py
+# agent/core/graph.py
 
 """
 工作流图定义模块
@@ -19,8 +19,8 @@ import logging
 from langchain_core.pydantic_v1 import BaseModel, Field
 from langchain_langgraph.graph import StateGraph, END
 
-from ai_agent.core.state import GraphState
-from ai_agent.core.nodes import (
+from agent.core.state import GraphState
+from agent.core.nodes import (
     TaskParser,
     StrategyDecider,
     TaskPlanner,

@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.orm import Session
-from typing import Any, Optional
+from typing import Any, Optional, Dict
 from app.core.auth import get_current_user
 from app.db.base import get_db
 from app.models.user import User
 from app.models.interview import Interview, FileType
 from app.models.analysis import Analysis
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 import os
 import json
 from datetime import datetime
@@ -25,14 +25,19 @@ class InterviewResponse(BaseModel):
     file_type: str
     duration: Optional[float]
     created_at: datetime
+    user_id: int
+    job_position_id: Optional[int] = None
+    
+    model_config = ConfigDict(from_attributes=True, arbitrary_types_allowed=True)
 
 # 上传面试文件
-@router.post("/upload", response_model=InterviewResponse)
+@router.post("/upload/", response_model=InterviewResponse)
 async def upload_interview(
     file: UploadFile = File(...),
     title: str = Form(...),
     description: Optional[str] = Form(None),
-    current_user: DBUser = Depends(get_current_user),
+    job_position_id: int = Form(...),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ) -> Any:
     # 检查文件类型
@@ -61,7 +66,8 @@ async def upload_interview(
         title=title,
         description=description,
         file_path=file_path,
-        file_type=file_type
+        file_type=file_type,
+        job_position_id=job_position_id
     )
     
     db.add(interview)
@@ -71,16 +77,16 @@ async def upload_interview(
     return interview
 
 # 获取用户的所有面试记录
-@router.get("", response_model=list[InterviewResponse])
-async def get_interviews(current_user: DBUser = Depends(get_current_user), db: Session = Depends(get_db)) -> Any:
+@router.get("", response_model=list[InterviewResponse], response_model_exclude={"job_position"})
+async def get_interviews(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> Any:
     interviews = db.query(Interview).filter(Interview.user_id == current_user.id).all()
     return interviews
 
 # 获取单个面试记录详情
-@router.get("/{interview_id}", response_model=InterviewResponse)
+@router.get("/{interview_id}", response_model=InterviewResponse, response_model_exclude={"job_position"})
 async def get_interview(
     interview_id: int,
-    current_user: DBUser = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ) -> Any:
     interview = db.query(Interview).filter(
@@ -100,7 +106,7 @@ async def get_interview(
 @router.delete("/{interview_id}")
 async def delete_interview(
     interview_id: int,
-    current_user: DBUser = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ) -> Any:
     interview = db.query(Interview).filter(

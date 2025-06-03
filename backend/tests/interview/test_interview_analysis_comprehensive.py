@@ -16,7 +16,7 @@ from app.core.security import get_password_hash
 import io
 
 # 使用conftest_admin.py中的测试夹具
-from conftest_admin import admin_test_db, admin_client, admin_token
+from ..conftest_admin import admin_test_db, admin_client, admin_token
 
 # 创建测试用户和token
 @pytest.fixture(scope="function")

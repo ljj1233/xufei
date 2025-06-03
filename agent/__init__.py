@@ -1,4 +1,4 @@
-# ai_agent/__init__.py
+# agent/__init__.py
 
 """
 多模态面试评测智能体库
@@ -7,12 +7,29 @@
 通过将AI功能从后端分离，实现了更清晰的架构和更灵活的调用方式。
 """
 
+import logging
+import os
+import sys
+
+# 将src目录添加到sys.path
+current_dir = os.path.dirname(os.path.abspath(__file__))
+src_dir = os.path.join(current_dir, 'src')
+if src_dir not in sys.path:
+    sys.path.insert(0, src_dir)
+
+# 设置日志
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+
+logging.getLogger('agent').setLevel(logging.INFO)
+
+# 导出核心模块
+from src.core import agent
+
 __version__ = '0.1.0'
 
 # 导出主要类和函数，方便用户直接从包导入
 from .src.core.agent import InterviewAgent, AnalysisResult
 from .src.core.system.config import AgentConfig
-
-# 设置默认日志级别
-import logging
-logging.getLogger('ai_agent').setLevel(logging.INFO)

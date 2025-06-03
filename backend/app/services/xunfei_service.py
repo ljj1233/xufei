@@ -7,7 +7,7 @@ import json
 import requests
 from ..core.xunfei_config import xunfei_settings
 
-class XunFeiService:
+class XunfeiService:
     def __init__(self):
         self.app_id = xunfei_settings.XUNFEI_APPID
         self.api_key = xunfei_settings.XUNFEI_API_KEY
@@ -51,6 +51,8 @@ class XunFeiService:
         result = response.json()
         
         if result.get('code') == '0':
+            if isinstance(result.get('data'), dict) and 'result' in result.get('data'):
+                return result.get('data').get('result', '')
             return result.get('data', '')
         return ''
 
@@ -76,11 +78,13 @@ class XunFeiService:
         result = response.json()
         
         if result.get('code') == '0':
+            data = result.get('data', {})
             return {
-                'clarity': result.get('clarity', 0),  # 清晰度
-                'fluency': result.get('fluency', 0),  # 流畅度
-                'integrity': result.get('integrity', 0),  # 完整度
-                'speed': result.get('speed', 0)  # 语速
+                'clarity': data.get('clarity', 0),  # 清晰度
+                'fluency': data.get('fluency', 0),  # 流畅度
+                'integrity': data.get('integrity', 0),  # 完整度
+                'speed': data.get('speed', 0),  # 语速
+                'pronunciation': data.get('pronunciation', 0)  # 发音
             }
         return {}
 
@@ -104,10 +108,17 @@ class XunFeiService:
         result = response.json()
         
         if result.get('code') == '0':
+            data = result.get('data', {})
+            emotion_data = data.get('emotion', {})
+            if isinstance(emotion_data, dict):
+                return emotion_data
             return {
-                'emotion': result.get('emotion', ''),  # 情感类型
-                'confidence': result.get('confidence', 0)  # 置信度
+                'positive': data.get('positive', 0),  # 积极情绪
+                'neutral': data.get('neutral', 0),  # 中性情绪
+                'negative': data.get('negative', 0),  # 消极情绪
+                'emotion': data.get('emotion', ''),  # 情感类型
+                'confidence': data.get('confidence', 0)  # 置信度
             }
         return {}
 
-xunfei_service = XunFeiService()
+xunfei_service = XunfeiService()

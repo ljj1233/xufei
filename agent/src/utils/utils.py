@@ -1,4 +1,4 @@
-# ai_agent/core/utils.py
+# agent/core/utils.py
 
 from typing import Dict, Any, List, Optional
 import os
@@ -7,7 +7,7 @@ import json
 import logging
 
 # 配置日志
-logger = logging.getLogger("ai_agent")
+logger = logging.getLogger("agent")
 
 def setup_logging(level: str = "INFO", log_file: Optional[str] = None):
     """设置日志

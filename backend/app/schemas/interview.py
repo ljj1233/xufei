@@ -28,3 +28,5 @@ class Interview(InterviewInDB):
     # 使用字符串类型注解代替ForwardRef
     analysis: Optional[Dict[str, Any]] = None
     job_position: Optional[Dict[str, Any]] = None
+    
+    model_config = dict(from_attributes=True, arbitrary_types_allowed=True)

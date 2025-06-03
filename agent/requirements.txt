@@ -1,4 +1,4 @@
-# ai_agent/requirements.txt
+# agent/requirements.txt
 
 # 基础依赖
 numpy>=1.19.0

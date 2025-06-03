@@ -1,4 +1,4 @@
-# ai_agent/setup.py
+# agent/setup.py
 
 from setuptools import setup, find_packages
 

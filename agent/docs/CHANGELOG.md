@@ -16,7 +16,7 @@
 <details>
 <summary>点击展开核心状态定义详情</summary>
 
-- ✅ 创建 `ai_agent/core/state.py`
+- ✅ 创建 `agent/core/state.py`
 - ✅ 定义 `TaskType`、`TaskPriority`、`TaskStatus` 枚举
 - ✅ 定义 `Task`、`AnalysisResult`、`TaskState`、`AnalysisState`、`UserContext`、`FeedbackState`、`GraphState` 数据类
 </details>
@@ -25,20 +25,20 @@
 <details>
 <summary>点击展开工作流节点实现详情</summary>
 
-- ✅ 创建 `ai_agent/core/nodes/task_parser.py` - 任务解析节点
-- ✅ 创建 `ai_agent/core/nodes/strategy_decider.py` - 策略决策节点
-- ✅ 创建 `ai_agent/core/nodes/task_planner.py` - 任务规划节点
-- ✅ 创建 `ai_agent/core/nodes/analyzer_executor.py` - 分析执行节点
-- ✅ 创建 `ai_agent/core/nodes/result_integrator.py` - 结果整合节点
-- ✅ 创建 `ai_agent/core/nodes/feedback_generator.py` - 反馈生成节点
-- ✅ 创建 `ai_agent/core/nodes/adaptation_node.py` - 适应节点
+- ✅ 创建 `agent/core/nodes/task_parser.py` - 任务解析节点
+- ✅ 创建 `agent/core/nodes/strategy_decider.py` - 策略决策节点
+- ✅ 创建 `agent/core/nodes/task_planner.py` - 任务规划节点
+- ✅ 创建 `agent/core/nodes/analyzer_executor.py` - 分析执行节点
+- ✅ 创建 `agent/core/nodes/result_integrator.py` - 结果整合节点
+- ✅ 创建 `agent/core/nodes/feedback_generator.py` - 反馈生成节点
+- ✅ 创建 `agent/core/nodes/adaptation_node.py` - 适应节点
 </details>
 
 #### 4. 工作流图定义
 <details>
 <summary>点击展开工作流图定义详情</summary>
 
-- ✅ 创建 `ai_agent/core/graph.py`
+- ✅ 创建 `agent/core/graph.py`
 - ✅ 定义节点和边的连接关系
 - ✅ 设置条件分支逻辑
 - ✅ 配置入口和出口节点
@@ -48,11 +48,11 @@
 <details>
 <summary>点击展开智能体实现详情</summary>
 
-- ✅ 创建 `ai_agent/core/langgraph_agent.py`
+- ✅ 创建 `agent/core/langgraph_agent.py`
 - ✅ 整合工作流图和状态管理
 - ✅ 提供统一的处理接口
-- ✅ 重构 `ai_agent/core/intelligent_agent.py` 以使用 LangGraph 框架
-- ✅ 更新 `ai_agent/core/agent.py`
+- ✅ 重构 `agent/core/intelligent_agent.py` 以使用 LangGraph 框架
+- ✅ 更新 `agent/core/agent.py`
   - 已完成InterviewAgent类与LangGraph框架的集成
   - 实现了所有分析方法的LangGraph支持，包括analyze、analyze_audio_stream、analyze_video_frame、analyze_question_answer和实时分析会话管理
   - 保持了向后兼容性，允许通过use_langgraph参数控制是否使用LangGraph框架
@@ -64,7 +64,7 @@
 <details>
 <summary>点击展开示例代码详情</summary>
 
-- ✅ 创建 `ai_agent/examples/langgraph_agent_example.py`
+- ✅ 创建 `agent/examples/langgraph_agent_example.py`
 - ✅ 演示基本使用方法
 - ✅ 包含同步和流式处理示例
 </details>
@@ -73,20 +73,20 @@
 <details>
 <summary>点击展开分析器适配详情</summary>
 
-- ✅ 创建 `ai_agent/core/analyzer_adapter.py`
+- ✅ 创建 `agent/core/analyzer_adapter.py`
 - ✅ 实现 `AnalyzerAdapter` 抽象基类
 - ✅ 实现 `SpeechAnalyzerAdapter`、`VisualAnalyzerAdapter`、`ContentAnalyzerAdapter`
 - ✅ 创建 `AnalyzerFactory` 用于创建适配器
 - ✅ 更新 `AnalyzerExecutor` 以使用真实分析器
-- ✅ 创建 `ai_agent/tests/test_analyzer_adapter.py` 测试文件
-- ✅ 创建 `ai_agent/core/analyzer_adapter_refactored.py` 重构版适配器
+- ✅ 创建 `agent/tests/test_analyzer_adapter.py` 测试文件
+- ✅ 创建 `agent/core/analyzer_adapter_refactored.py` 重构版适配器
 </details>
 
 #### 8. 状态管理优化
 <details>
 <summary>点击展开状态管理优化详情</summary>
 
-- ✅ 更新 `ai_agent/core/state_manager.py`
+- ✅ 更新 `agent/core/state_manager.py`
 - ✅ 添加 LangGraph 状态持久化功能
 - ✅ 实现状态缓存和历史管理
 - ✅ 添加性能统计和监控
@@ -98,7 +98,7 @@
 <details>
 <summary>点击展开并行处理详情</summary>
 
-- ✅ 创建 `ai_agent/core/parallel_processor.py`
+- ✅ 创建 `agent/core/parallel_processor.py`
 - ✅ 实现多线程、多进程和异步处理支持
 - ✅ 添加资源监控和负载均衡
 - ✅ 实现任务队列和优先级管理
@@ -110,14 +110,14 @@
 <details>
 <summary>点击展开学习与适应详情</summary>
 
-- ✅ 重构 `ai_agent/core/learning/adaptation_manager.py`
-- ✅ 创建 `ai_agent/core/learning/adaptation_manager_refactored.py`
+- ✅ 重构 `agent/core/learning/adaptation_manager.py`
+- ✅ 创建 `agent/core/learning/adaptation_manager_refactored.py`
 - ✅ 实现适应性参数调整
 - ✅ 添加性能监控和趋势分析
 - ✅ 实现规则引擎和事件跟踪
 - ✅ 集成到 LangGraph 工作流
 - ✅ 实现JSON存储用于适应事件、参数和性能指标
-- ✅ 重构 `ai_agent/core/nodes/adaptation_node.py` 移除学习引擎依赖
+- ✅ 重构 `agent/core/nodes/adaptation_node.py` 移除学习引擎依赖
 </details>
 
 #### 11. 测试与评估 🧪

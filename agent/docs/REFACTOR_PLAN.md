@@ -48,8 +48,8 @@ LangGraph是一个基于有向图的框架，专为构建基于LLM的智能体�
 
 ### 新增文件
 
-1. `ai_agent/core/langgraph_agent.py` - LangGraph智能体实现
-2. `ai_agent/core/nodes/` - 工作流节点目录
+1. `agent/core/langgraph_agent.py` - LangGraph智能体实现
+2. `agent/core/nodes/` - 工作流节点目录
    - `__init__.py`
    - `task_parser.py` - 任务解析节点
    - `strategy_decider.py` - 策略决策节点
@@ -57,16 +57,16 @@ LangGraph是一个基于有向图的框架，专为构建基于LLM的智能体�
    - `analyzer_executor.py` - 分析执行节点
    - `result_integrator.py` - 结果整合节点
    - `feedback_generator.py` - 反馈生成节点
-3. `ai_agent/core/graph.py` - 工作流图定义
-4. `ai_agent/core/state.py` - 状态定义和管理
-5. `ai_agent/tools/` - 工具集目录
+3. `agent/core/graph.py` - 工作流图定义
+4. `agent/core/state.py` - 状态定义和管理
+5. `agent/tools/` - 工具集目录
 
 ### 修改文件
 
-1. `ai_agent/requirements.txt` - 添加LangGraph依赖
-2. `ai_agent/core/intelligent_agent.py` - 重构为使用LangGraph
-3. `ai_agent/core/state_manager.py` - 适配LangGraph状态管理
-4. `ai_agent/core/agent.py` - 更新为使用新架构
+1. `agent/requirements.txt` - 添加LangGraph依赖
+2. `agent/core/intelligent_agent.py` - 重构为使用LangGraph
+3. `agent/core/state_manager.py` - 适配LangGraph状态管理
+4. `agent/core/agent.py` - 更新为使用新架构
 
 ## 实现步骤
 

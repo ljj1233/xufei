@@ -1,4 +1,4 @@
-# ai_agent/core/nodes/result_integrator.py
+# agent/core/nodes/result_integrator.py
 
 """
 结果整合节点

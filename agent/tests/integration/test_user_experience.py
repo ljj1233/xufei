@@ -12,13 +12,13 @@ from typing import Dict, Any, List
 import json
 from pathlib import Path
 
-from ai_agent.core.state import GraphState, TaskType, TaskStatus
-from ai_agent.core.nodes.task_parser import TaskParser
-from ai_agent.core.nodes.strategy_decider import StrategyDecider
-from ai_agent.core.nodes.task_planner import TaskPlanner
-from ai_agent.core.nodes.analyzer_executor import AnalyzerExecutor
-from ai_agent.core.nodes.result_integrator import ResultIntegrator
-from ai_agent.core.nodes.feedback_generator import FeedbackGenerator
+from agent.core.state import GraphState, TaskType, TaskStatus
+from agent.core.nodes.task_parser import TaskParser
+from agent.core.nodes.strategy_decider import StrategyDecider
+from agent.core.nodes.task_planner import TaskPlanner
+from agent.core.nodes.analyzer_executor import AnalyzerExecutor
+from agent.core.nodes.result_integrator import ResultIntegrator
+from agent.core.nodes.feedback_generator import FeedbackGenerator
 
 logger = logging.getLogger(__name__)
 

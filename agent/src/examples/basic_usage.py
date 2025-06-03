@@ -1,4 +1,4 @@
-# ai_agent/examples/basic_usage.py
+# agent/examples/basic_usage.py
 
 """
 多模态面试评测智能体库使用示例
@@ -8,7 +8,7 @@
 
 import os
 import json
-from ai_agent.src.core.agent.agent import InterviewAgent
+from agent.src.core.agent.agent import InterviewAgent
 
 # 创建智能体实例
 agent = InterviewAgent()

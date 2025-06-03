@@ -10,7 +10,7 @@ from app.models.user import User
 from app.core.security import get_password_hash
 
 # 使用conftest_admin.py中的测试夹具
-from conftest_admin import admin_test_db, admin_client, admin_token
+from ..conftest_admin import admin_test_db, admin_client, admin_token
 
 # 测试用户注册的全面功能
 def test_register_user_comprehensive(admin_client):

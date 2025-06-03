@@ -1,4 +1,4 @@
-# ai_agent/core/config.py
+# agent/core/config.py
 
 from typing import Dict, Any, Optional
 import os

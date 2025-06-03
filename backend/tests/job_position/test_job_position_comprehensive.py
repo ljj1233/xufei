@@ -11,7 +11,7 @@ from app.models.job_position import JobPosition, TechField, PositionType
 from app.core.security import get_password_hash
 
 # 使用conftest_admin.py中的测试夹具
-from conftest_admin import admin_test_db, admin_client, admin_token
+from ..conftest_admin import admin_test_db, admin_client, admin_token
 
 # 测试职位创建接口的全面功能
 def test_create_job_position_comprehensive(admin_client, admin_token, admin_test_db):
@@ -169,24 +169,24 @@ def test_search_job_positions(admin_client, admin_token, admin_test_db):
         )
     
     # 测试按关键词搜索
-    response = admin_client.get("/api/v1/job-positions/search?keyword=人工智能")
+    response = admin_client.get("/api/v1/job-positions/find?keyword=人工智能")
     assert response.status_code == 200
     data = response.json()
-    assert len(data) > 0
+    assert len(data) >= 1
     assert any("人工智能" in job["title"] for job in data)
     
     # 测试按技能搜索
-    response = admin_client.get("/api/v1/job-positions/search?keyword=Python")
+    response = admin_client.get("/api/v1/job-positions/find?keyword=Hadoop")
     assert response.status_code == 200
     data = response.json()
-    assert len(data) > 0
-    assert any("Python" in job["required_skills"] for job in data)
+    assert len(data) >= 1
+    assert any("Hadoop" in job["required_skills"] for job in data)
     
     # 测试按描述搜索
-    response = admin_client.get("/api/v1/job-positions/search?keyword=算法")
+    response = admin_client.get("/api/v1/job-positions/find?keyword=算法")
     assert response.status_code == 200
     data = response.json()
-    assert len(data) > 0
+    assert len(data) >= 1
     assert any("算法" in job["job_description"] for job in data)
 
 # 测试职位批量操作

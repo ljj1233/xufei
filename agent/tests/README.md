@@ -34,25 +34,25 @@ pip install pytest pytest-mock
 在项目根目录下运行：
 
 ```bash
-python -m pytest ai_agent/tests
+python -m pytest agent/tests
 ```
 
 ### 运行特定测试文件
 
 ```bash
-python -m pytest ai_agent/tests/test_speech_analyzer.py
+python -m pytest agent/tests/test_speech_analyzer.py
 ```
 
 ### 运行特定测试函数
 
 ```bash
-python -m pytest ai_agent/tests/test_speech_analyzer.py::test_init
+python -m pytest agent/tests/test_speech_analyzer.py::test_init
 ```
 
 ### 查看详细输出
 
 ```bash
-python -m pytest ai_agent/tests -v
+python -m pytest agent/tests -v
 ```
 
 ## 测试覆盖率
@@ -61,5 +61,5 @@ python -m pytest ai_agent/tests -v
 
 ```bash
 pip install pytest-cov
-python -m pytest ai_agent/tests --cov=ai_agent
+python -m pytest agent/tests --cov=agent
 ```

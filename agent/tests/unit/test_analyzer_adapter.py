@@ -11,13 +11,13 @@ import tempfile
 import numpy as np
 from unittest.mock import Mock, patch
 
-from ai_agent.core.analyzer_adapter import (
+from agent.core.analyzer_adapter import (
     AnalyzerFactory,
     SpeechAnalyzerAdapter,
     VisualAnalyzerAdapter,
     ContentAnalyzerAdapter
 )
-from ai_agent.core.state import GraphState, TaskType, AnalysisResult
+from agent.core.state import GraphState, TaskType, AnalysisResult
 
 
 class TestAnalyzerFactory(unittest.TestCase):

@@ -12,7 +12,7 @@ from pathlib import Path
 import logging
 from enum import Enum, auto
 
-from ai_agent.src.core.workflow.state import AnalysisResult, Task, TaskStatus
+from agent.src.core.workflow.state import AnalysisResult, Task, TaskStatus
 from .learning_engine import LearningEngine, LearningMetrics, LearningData
 
 

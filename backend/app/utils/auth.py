@@ -98,7 +98,7 @@ def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_
         raise credentials_exception
     
     # 从数据库获取用户
-    from app.db.models import User  # 避免循环导入
+    from app.models.user import User  # 避免循环导入
     user = db.query(User).filter(User.id == token_data.sub).first()
     if user is None:
         raise credentials_exception

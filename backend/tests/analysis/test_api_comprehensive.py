@@ -110,7 +110,7 @@ def client(test_db):
 def user_token(client):
     response = client.post(
         "/api/v1/users/login",
-        data={"username": "testuser@example.com", "password": "password123"}
+        data={"username": "testuser", "password": "password123"}
     )
     return response.json()["access_token"]
 
@@ -119,7 +119,7 @@ def user_token(client):
 def admin_token(client):
     response = client.post(
         "/api/v1/users/login",
-        data={"username": "admin@example.com", "password": "admin123"}
+        data={"username": "admin", "password": "admin123"}
     )
     return response.json()["access_token"]
 
@@ -169,7 +169,7 @@ def test_login_user(client, test_db):
     # 测试正确登录
     response = client.post(
         "/api/v1/users/login",
-        data={"username": "testuser@example.com", "password": "password123"}
+        data={"username": "testuser", "password": "password123"}
     )
     assert response.status_code == 200
     data = response.json()
@@ -179,18 +179,18 @@ def test_login_user(client, test_db):
     # 测试错误密码
     response = client.post(
         "/api/v1/users/login",
-        data={"username": "testuser@example.com", "password": "wrongpassword"}
+        data={"username": "testuser", "password": "wrongpassword"}
     )
     assert response.status_code == 401
-    assert "认证失败" in response.json()["detail"]
+    assert "用户名或密码不正确" in response.json()["detail"]
     
     # 测试不存在的用户
     response = client.post(
         "/api/v1/users/login",
-        data={"username": "nonexistent@example.com", "password": "password123"}
+        data={"username": "nonexistent", "password": "password123"}
     )
     assert response.status_code == 401
-    assert "认证失败" in response.json()["detail"]
+    assert "用户名或密码不正确" in response.json()["detail"]
 
 # 测试获取当前用户信息
 def test_get_current_user(client, user_token):

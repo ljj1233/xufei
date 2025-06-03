@@ -54,9 +54,11 @@ class InterviewSession(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    # 关联关系
-    user = relationship("User", back_populates="interview_sessions")
-    job_position = relationship("JobPosition", back_populates="interview_sessions")
+    # 关联关系 - 移除双向关系，改为单向关系
+    # user = relationship("User", back_populates="interview_sessions")
+    # job_position = relationship("JobPosition", back_populates="interview_sessions")
+    user = relationship("User")
+    job_position = relationship("JobPosition")
     questions = relationship("InterviewQuestion", back_populates="session", cascade="all, delete-orphan")
     real_time_feedback = relationship("RealTimeFeedback", back_populates="session", cascade="all, delete-orphan")
     final_analysis = relationship("SessionAnalysis", back_populates="session", uselist=False, cascade="all, delete-orphan")

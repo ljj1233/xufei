@@ -1,10 +1,10 @@
-# ai_agent/tests/conftest.py
+# agent/tests/conftest.py
 
 import os
 import pytest
 from unittest.mock import patch, MagicMock
 
-from ai_agent.core.config import AgentConfig
+from agent.core.config import AgentConfig
 
 
 @pytest.fixture(scope="session")

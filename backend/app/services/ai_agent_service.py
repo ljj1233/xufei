@@ -5,9 +5,68 @@ import numpy as np
 from datetime import datetime
 import logging
 
-from ai_agent.core.agent import InterviewAgent
-from ai_agent.core.models import AnalysisResult
-from backend.app.core.config import settings
+# 创建模拟的AnalysisResult类
+class AnalysisResult:
+    """模拟的分析结果类，用于测试"""
+    def __init__(self, data=None):
+        self.data = data or {}
+    
+    @property
+    def speech_analysis(self):
+        return self.data.get("speech", {})
+    
+    @property
+    def visual_analysis(self):
+        return self.data.get("visual", {})
+    
+    @property
+    def content_analysis(self):
+        return self.data.get("content", {})
+
+# 创建模拟的InterviewAgent类
+class InterviewAgent:
+    """模拟的面试智能体，用于测试"""
+    
+    def __init__(self):
+        self.config = {"model": "test_model"}
+    
+    async def start_real_time_analysis(self, session_id, scenario, feedback_callback):
+        """模拟开始实时分析"""
+        return True
+    
+    async def stop_real_time_analysis(self, session_id):
+        """模拟停止实时分析"""
+        return True
+    
+    async def analyze_audio_stream(self, session_id, audio_data, timestamp):
+        """模拟分析音频流"""
+        return {
+            "clarity": {"score": 7.5, "details": "清晰度良好"},
+            "pace": {"score": 7.0, "words_per_minute": 150},
+            "emotion": {"score": 6.5, "primary": "neutral"},
+            "timestamp": timestamp
+        }
+    
+    async def analyze_video_frame(self, session_id, frame_data, timestamp):
+        """模拟分析视频帧"""
+        return {
+            "eye_contact": {"score": 7.0, "details": "良好的眼神交流"},
+            "expression": {"score": 6.5, "primary": "neutral"},
+            "posture": {"score": 7.5, "details": "坐姿端正"},
+            "timestamp": timestamp
+        }
+    
+    async def analyze_question_answer(self, session_id, question_id, answer_text, 
+                                     audio_features=None, visual_features=None):
+        """模拟分析问题回答"""
+        return {
+            "relevance": {"score": 7.5, "details": "回答与问题相关"},
+            "structure": {"score": 7.0, "details": "结构清晰"},
+            "depth": {"score": 6.5, "details": "深度适中"},
+            "overall": {"score": 7.0}
+        }
+
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 

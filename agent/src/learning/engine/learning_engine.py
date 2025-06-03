@@ -13,7 +13,7 @@ from pathlib import Path
 import logging
 from abc import ABC, abstractmethod
 
-from ai_agent.src.core.workflow.state import AnalysisResult, Task, TaskStatus
+from agent.src.core.workflow.state import AnalysisResult, Task, TaskStatus
 
 
 @dataclass

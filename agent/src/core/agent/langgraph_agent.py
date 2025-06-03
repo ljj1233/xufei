@@ -1,4 +1,4 @@
-# ai_agent/core/langgraph_agent.py
+# agent/core/langgraph_agent.py
 
 """
 LangGraph智能体实现
@@ -14,8 +14,8 @@ import json
 
 from langchain_langgraph.graph import StateGraph
 
-from ai_agent.core.state import GraphState, UserContext
-from ai_agent.core.graph import get_or_create_interview_agent_graph
+from agent.core.state import GraphState, UserContext
+from agent.core.graph import get_or_create_interview_agent_graph
 
 # 配置日志
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')

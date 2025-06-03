@@ -1,4 +1,4 @@
-# ai_agent/analyzers/speech/speech_analyzer.py
+# agent/analyzers/speech/speech_analyzer.py
 
 from typing import Dict, Any, Optional, Tuple, List
 import os
@@ -17,7 +17,7 @@ from ...core.utils import normalize_score, weighted_average
 from .audio_feature_extractor import AudioFeatureExtractor
 
 # 获取日志记录器
-logger = logging.getLogger("ai_agent.speech_analyzer")
+logger = logging.getLogger("agent.speech_analyzer")
 
 
 class SpeechAnalyzer(Analyzer):

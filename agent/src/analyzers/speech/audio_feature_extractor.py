@@ -1,4 +1,4 @@
-# ai_agent/analyzers/audio_feature_extractor.py
+# agent/analyzers/audio_feature_extractor.py
 
 from typing import Dict, Any, Tuple
 import logging
@@ -6,7 +6,7 @@ import numpy as np
 import librosa
 
 # 获取日志记录器
-logger = logging.getLogger("ai_agent.audio_feature_extractor")
+logger = logging.getLogger("agent.audio_feature_extractor")
 
 
 class AudioFeatureExtractor:

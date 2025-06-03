@@ -1,4 +1,4 @@
-# ai_agent/analyzers/visual/visual_analyzer.py
+# agent/analyzers/visual/visual_analyzer.py
 
 from typing import Dict, Any, Optional, List, Tuple
 import os

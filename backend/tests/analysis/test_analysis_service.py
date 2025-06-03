@@ -77,45 +77,26 @@ class TestAnalysisService:
         # 模拟讯飞服务返回结果
         mock_xunfei_instance = MagicMock()
         mock_xunfei_instance.speech_recognition.return_value = "这是一段测试的面试回答内容，我有丰富的项目经验和技术能力。"
-        mock_xunfei_instance.emotion_analysis.return_value = {"emotion": "积极", "confidence": 0.85}
+        mock_xunfei_instance.speech_assessment.return_value = {
+            "fluency": 85.5,
+            "clarity": 90.2,
+            "pronunciation": 88.7,
+            "speed": 4.5
+        }
+        mock_xunfei_instance.emotion_analysis.return_value = {
+            "emotion": "积极",
+            "confidence": 0.85
+        }
         mock_xunfei.return_value = mock_xunfei_instance
         
         # 创建分析服务实例
-        analysis_service = AnalysisService(test_db)
+        analysis_service = AnalysisService(db=test_db, xunfei_service=mock_xunfei_instance)
         
         # 模拟视频/音频文件存在
         with patch("os.path.exists", return_value=True):
             with patch("builtins.open", MagicMock()):
-                # 模拟视觉分析结果
-                with patch.object(analysis_service, "_analyze_visual", return_value={
-                    "facial_expressions": {"微笑": 60, "专注": 40},
-                    "eye_contact": 85.0,
-                    "body_language": {"自信": 80, "放松": 20}
-                }):
-                    # 模拟内容分析结果
-                    with patch.object(analysis_service, "_analyze_content", return_value={
-                        "content_relevance": 90.0,
-                        "content_structure": 85.0,
-                        "key_points": ["项目经验", "技术能力", "团队协作"],
-                        "professional_knowledge": 88.0,
-                        "skill_matching": 85.0,
-                        "logical_thinking": 87.0,
-                        "innovation_ability": 80.0,
-                        "stress_handling": 82.0,
-                        "situation_score": 85.0,
-                        "task_score": 88.0,
-                        "action_score": 90.0,
-                        "result_score": 85.0
-                    }):
-                        # 模拟语音分析结果
-                        with patch.object(analysis_service, "_analyze_speech", return_value={
-                            "speech_clarity": 90.0,
-                            "speech_pace": 75.0,
-                            "speech_emotion": "积极",
-                            "speech_logic": 85.0
-                        }):
-                            # 执行分析
-                            result = analysis_service.analyze_interview(interview.id)
+                # 执行分析
+                result = analysis_service.analyze_interview(interview.id)
         
         # 验证分析结果
         assert result is not None
@@ -172,7 +153,7 @@ class TestAnalysisService:
         test_db.commit()
         
         # 创建分析服务实例
-        analysis_service = AnalysisService(test_db)
+        analysis_service = AnalysisService(db=test_db)
         
         # 获取分析结果
         result = analysis_service.get_analysis(interview.id)

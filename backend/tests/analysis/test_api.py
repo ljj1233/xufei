@@ -61,11 +61,12 @@ def test_register_login_upload_and_get_interview(client, tmp_path):
         "title": "测试面试",
         "description": "desc",
         "tech_field": "AI",
-        "position_type": "技术岗"
+        "position_type": "技术岗",
+        "job_position_id": "1"  # 假设ID为1的职位已存在
     }
     with open(test_audio, "rb") as f:
         files = {"file": ("test_audio.mp3", f, "audio/mpeg")}
-        resp = client.post(f"{settings.API_V1_STR}/interviews/upload", data=form_data, files=files, headers={"Authorization": f"Bearer {token}"})
+        resp = client.post(f"{settings.API_V1_STR}/interviews/upload/", data=form_data, files=files, headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code in (200, 201)
     interview_id = resp.json()["id"]
     # 获取面试列表

@@ -1,4 +1,4 @@
-# ai_agent/examples/langgraph_agent_example.py
+# agent/examples/langgraph_agent_example.py
 
 """
 基于LangGraph的智能面试代理示例
@@ -16,8 +16,8 @@ import logging
 # 添加项目根目录到路径
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
-from ai_agent.core.intelligent_agent import IntelligentInterviewAgent
-from ai_agent.core.state import TaskType, TaskPriority
+from agent.core.intelligent_agent import IntelligentInterviewAgent
+from agent.core.state import TaskType, TaskPriority
 
 # 配置日志
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')

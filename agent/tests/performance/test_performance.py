@@ -14,9 +14,9 @@ import json
 import os
 from pathlib import Path
 
-from ai_agent.core.state import GraphState, TaskType, TaskStatus
-from ai_agent.core.nodes.analyzer_executor import AnalyzerExecutor
-from ai_agent.core.analyzer_adapter import AnalyzerFactory
+from agent.core.state import GraphState, TaskType, TaskStatus
+from agent.core.nodes.analyzer_executor import AnalyzerExecutor
+from agent.core.analyzer_adapter import AnalyzerFactory
 
 logger = logging.getLogger(__name__)
 

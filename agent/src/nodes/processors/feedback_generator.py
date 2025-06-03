@@ -1,4 +1,4 @@
-# ai_agent/core/nodes/feedback_generator.py
+# agent/core/nodes/feedback_generator.py
 
 """
 反馈生成节点

@@ -13,7 +13,7 @@ import logging
 from collections import defaultdict, Counter
 from enum import Enum, auto
 
-from ai_agent.src.core.workflow.state import AnalysisResult, Task, TaskStatus
+from agent.src.core.workflow.state import AnalysisResult, Task, TaskStatus
 
 
 class PreferenceType(Enum):

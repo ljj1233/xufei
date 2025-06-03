@@ -1,4 +1,4 @@
-# ai_agent/scenarios/tech_interview_suggestions.py
+# agent/scenarios/tech_interview_suggestions.py
 
 from typing import Dict, List
 

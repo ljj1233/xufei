@@ -1,4 +1,4 @@
-# ai_agent/core/agent.py
+# agent/core/agent.py
 
 from typing import Dict, Any, Optional, List, Callable, AsyncGenerator
 import os
@@ -88,7 +88,7 @@ class InterviewAgent:
         self.feedback_callbacks = []
         
         # 初始化LangGraph智能体
-        from ai_agent.core.langgraph_agent import LangGraphAgent
+        from agent.core.langgraph_agent import LangGraphAgent
         self.langgraph_agent = LangGraphAgent(user_id=user_id, session_id=session_id)
     
     def _load_default_scenarios(self):
