@@ -1,75 +1,83 @@
 <template>
-  <div class="app-container">
-    <el-container>
-      <el-header height="60px">
-        <div class="header-content">
-          <div class="logo">
-            <router-link to="/">
-              <h1>多模态面试评测智能体</h1>
-            </router-link>
+  <el-config-provider :locale="zhCn">
+    <div class="app-container">
+      <el-container>
+        <el-header height="60px">
+          <div class="header-content">
+            <div class="logo">
+              <router-link to="/">
+                <h1>多模态面试评测智能体</h1>
+              </router-link>
+            </div>
+            <div class="nav-menu" v-if="userStore.isLoggedIn">
+              <el-menu
+                :default-active="activeIndex"
+                mode="horizontal"
+                router
+                background-color="#545c64"
+                text-color="#fff"
+                active-text-color="#ffd04b"
+                class="main-menu"
+              >
+                <el-menu-item index="/">首页</el-menu-item>
+                <el-menu-item index="/upload">上传面试</el-menu-item>
+                <el-menu-item index="/results">面试结果</el-menu-item>
+                <el-menu-item index="/interview-practice">模拟面试</el-menu-item>
+                <el-menu-item index="/practice-history">练习记录</el-menu-item>
+                <el-menu-item index="/user">个人中心</el-menu-item>
+                <el-menu-item v-if="userStore.isAdmin" index="/admin">管理控制台</el-menu-item>
+                <el-menu-item @click="logout">退出登录</el-menu-item>
+              </el-menu>
+            </div>
+            <div class="user-actions">
+              <template v-if="userStore.isLoggedIn">
+                <el-dropdown>
+                  <span class="user-dropdown">
+                    {{ userStore.username }}
+                    <el-icon><arrow-down /></el-icon>
+                  </span>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item @click="router.push('/user')">个人中心</el-dropdown-item>
+                      <el-dropdown-item @click="logout">退出登录</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+              </template>
+              <template v-else>
+                <el-button type="primary" @click="router.push('/login')">登录</el-button>
+                <el-button @click="router.push('/register')">注册</el-button>
+              </template>
+            </div>
           </div>
-          <div class="nav-menu" v-if="userStore.isLoggedIn">
-            <el-menu
-              :default-active="activeIndex"
-              mode="horizontal"
-              router
-              background-color="#ffffff"
-              text-color="#333333"
-              active-text-color="#1E88E5"
-            >
-              <el-menu-item index="/upload">上传面试</el-menu-item>
-              <el-menu-item index="/results">分析结果</el-menu-item>
-              <el-menu-item index="/user">用户中心</el-menu-item>
-            </el-menu>
+        </el-header>
+        <el-main>
+          <router-view />
+        </el-main>
+        <el-footer height="60px">
+          <div class="footer-content">
+            <p>© {{ new Date().getFullYear() }} 多模态面试评测智能体 - 基于Vue.js和Element Plus构建</p>
           </div>
-          <div class="user-actions">
-            <template v-if="userStore.isLoggedIn">
-              <el-dropdown>
-                <span class="user-dropdown">
-                  {{ userStore.username }}
-                  <el-icon><arrow-down /></el-icon>
-                </span>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item @click="router.push('/user')">个人中心</el-dropdown-item>
-                    <el-dropdown-item @click="logout">退出登录</el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
-            </template>
-            <template v-else>
-              <el-button type="primary" @click="router.push('/login')">登录</el-button>
-              <el-button @click="router.push('/register')">注册</el-button>
-            </template>
-          </div>
-        </div>
-      </el-header>
-      <el-main>
-        <router-view />
-      </el-main>
-      <el-footer height="60px">
-        <div class="footer-content">
-          <p>© {{ new Date().getFullYear() }} 多模态面试评测智能体 - 基于Vue.js和Element Plus构建</p>
-        </div>
-      </el-footer>
-    </el-container>
-  </div>
+        </el-footer>
+      </el-container>
+    </div>
+  </el-config-provider>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from './stores/user'
 import { ArrowDown } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import zhCn from 'element-plus/lib/locale/lang/zh-cn'
 
 const router = useRouter()
 const userStore = useUserStore()
+const route = useRoute()
 
 // 计算当前激活的导航项
-const activeIndex = computed(() => {
-  return router.currentRoute.value.path
-})
+const activeIndex = computed(() => route.path)
 
 // 退出登录
 const logout = () => {
@@ -79,8 +87,8 @@ const logout = () => {
 }
 
 // 组件挂载时检查登录状态
-onMounted(() => {
-  userStore.checkLoginStatus()
+onMounted(async () => {
+  await userStore.checkLoginStatus()
 })
 </script>
 
@@ -155,5 +163,21 @@ onMounted(() => {
   align-items: center;
   height: 100%;
   color: #606266;
+}
+
+.main-menu {
+  margin-bottom: 20px;
+}
+
+.main-content {
+  flex: 1;
+  padding: 0 20px;
+}
+
+.app-footer {
+  background-color: #f5f5f5;
+  padding: 20px;
+  text-align: center;
+  margin-top: 30px;
 }
 </style>

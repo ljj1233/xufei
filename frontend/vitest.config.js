@@ -5,8 +5,14 @@ import path from 'path'
 export default defineConfig({
   plugins: [vue()],
   test: {
+    environment: 'jsdom',
+    exclude: ['**/node_modules/**', '**/tests/e2e/**'],
     globals: true,
-    environment: 'jsdom'
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      reportsDirectory: './coverage'
+    }
   },
   resolve: {
     alias: {

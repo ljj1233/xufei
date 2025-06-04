@@ -18,9 +18,11 @@ export const useUserStore = defineStore('user', () => {
   const token = ref(localStorage.getItem('user_token') || '')
   const username = ref(localStorage.getItem('username') || '')
   const userId = ref(localStorage.getItem('user_id') || '')
+  const userIsAdmin = ref(localStorage.getItem('user_is_admin') === 'true')
   
   // 计算属性
   const isLoggedIn = computed(() => !!token.value)
+  const isAdmin = computed(() => userIsAdmin.value)
   
   // 设置认证头
   const getAuthHeaders = () => {
@@ -71,8 +73,10 @@ export const useUserStore = defineStore('user', () => {
       const response = await axios.get(`${API_URL}/users/me`, getAuthHeaders())
       username.value = response.data.username
       userId.value = response.data.id
+      userIsAdmin.value = response.data.is_admin || false
       localStorage.setItem('username', username.value)
       localStorage.setItem('user_id', userId.value)
+      localStorage.setItem('user_is_admin', userIsAdmin.value.toString())
       return { success: true, data: response.data }
     } catch (error) {
       if (error.response?.status === 401) {
@@ -108,9 +112,11 @@ export const useUserStore = defineStore('user', () => {
     token.value = ''
     username.value = ''
     userId.value = ''
+    userIsAdmin.value = false
     localStorage.removeItem('user_token')
     localStorage.removeItem('username')
     localStorage.removeItem('user_id')
+    localStorage.removeItem('user_is_admin')
   }
   
   // 修改密码
@@ -134,7 +140,7 @@ export const useUserStore = defineStore('user', () => {
   const updateUserInfo = async (userData) => {
     try {
       const response = await axios.put(
-        `${API_URL}/users/update`,
+        `${API_URL}/users/me`,
         userData,
         getAuthHeaders()
       )
@@ -147,11 +153,100 @@ export const useUserStore = defineStore('user', () => {
     }
   }
   
+  // 管理员API：获取所有用户
+  const getUsers = async (page = 1, pageSize = 10) => {
+    try {
+      const response = await axios.get(
+        `${API_URL}/users?skip=${(page-1)*pageSize}&limit=${pageSize}`,
+        getAuthHeaders()
+      )
+      return { 
+        success: true, 
+        data: {
+          items: response.data,
+          total: response.headers['x-total-count'] || response.data.length
+        }
+      }
+    } catch (error) {
+      return { 
+        success: false, 
+        message: error.response?.data?.detail || '获取用户列表失败'
+      }
+    }
+  }
+  
+  // 管理员API：获取特定用户信息
+  const getUserById = async (userId) => {
+    try {
+      const response = await axios.get(
+        `${API_URL}/users/${userId}`,
+        getAuthHeaders()
+      )
+      return { success: true, data: response.data }
+    } catch (error) {
+      return { 
+        success: false, 
+        message: error.response?.data?.detail || '获取用户信息失败'
+      }
+    }
+  }
+  
+  // 管理员API：更新用户状态
+  const updateUserStatus = async (userId, isActive) => {
+    try {
+      const response = await axios.patch(
+        `${API_URL}/users/${userId}/status`,
+        { is_active: isActive },
+        getAuthHeaders()
+      )
+      return { success: true, data: response.data }
+    } catch (error) {
+      return { 
+        success: false, 
+        message: error.response?.data?.detail || '更新用户状态失败'
+      }
+    }
+  }
+  
+  // 管理员API：更新用户管理员权限
+  const updateUserAdmin = async (userId, isAdmin) => {
+    try {
+      const response = await axios.patch(
+        `${API_URL}/users/${userId}/admin`,
+        { is_admin: isAdmin },
+        getAuthHeaders()
+      )
+      return { success: true, data: response.data }
+    } catch (error) {
+      return { 
+        success: false, 
+        message: error.response?.data?.detail || '更新用户管理员权限失败'
+      }
+    }
+  }
+  
+  // 管理员API：删除用户
+  const deleteUserById = async (userId) => {
+    try {
+      const response = await axios.delete(
+        `${API_URL}/users/${userId}`,
+        getAuthHeaders()
+      )
+      return { success: true }
+    } catch (error) {
+      return { 
+        success: false, 
+        message: error.response?.data?.detail || '删除用户失败'
+      }
+    }
+  }
+  
   return {
     token,
     username,
     userId,
     isLoggedIn,
+    isAdmin,
     login,
     register,
     getUserInfo,
@@ -159,6 +254,12 @@ export const useUserStore = defineStore('user', () => {
     logout,
     changePassword,
     updateUserInfo,
-    getAuthHeaders
+    getAuthHeaders,
+    // 管理员API
+    getUsers,
+    getUserById,
+    updateUserStatus,
+    updateUserAdmin,
+    deleteUserById
   }
 })

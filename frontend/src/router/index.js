@@ -69,6 +69,13 @@ const router = createRouter({
       name: 'practice-history',
       component: () => import('../views/PracticeHistoryView.vue'),
       meta: { requiresAuth: true }
+    },
+    // 添加管理员路由
+    {
+      path: '/admin',
+      name: 'admin',
+      component: () => import('../views/AdminView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true }
     }
   ]
 })
@@ -85,6 +92,9 @@ router.beforeEach((to, from, next) => {
     // 上线模式，按原有权限控制
     if (to.meta.requiresAuth && !userStore.isLoggedIn) {
       next({ name: 'login' })
+    } else if (to.meta.requiresAdmin && !userStore.isAdmin) {
+      // 管理员权限检查
+      next({ name: 'home' })
     } else {
       next()
     }
