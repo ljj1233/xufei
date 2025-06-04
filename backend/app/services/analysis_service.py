@@ -21,15 +21,26 @@ class AnalysisService:
         self.xunfei_service = xunfei_service or default_service
         self.db = db
     
-    def analyze_interview(self, interview: Interview) -> Dict[str, Any]:
+    def analyze_interview(self, interview) -> Dict[str, Any]:
         """分析面试
         
         Args:
-            interview: 面试对象
+            interview: 面试对象或面试ID
             
         Returns:
             分析结果字典
         """
+        # 如果传入的是ID，则获取面试对象
+        if isinstance(interview, int):
+            interview_id = interview
+            interview = self.db.query(Interview).filter(Interview.id == interview_id).first()
+            if not interview:
+                raise ValueError(f"面试不存在: ID {interview_id}")
+        elif isinstance(interview, dict):
+            # 如果是字典，创建一个模拟的Interview对象
+            from types import SimpleNamespace
+            interview = SimpleNamespace(**interview)
+        
         # 获取职位信息
         job_position = self.db.query(JobPosition).filter(JobPosition.id == interview.job_position_id).first()
         if not job_position:

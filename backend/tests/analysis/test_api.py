@@ -7,6 +7,9 @@ from app.db.database import Base, get_db
 from app.main import app as original_app
 from app.core.config import settings
 import os
+from unittest.mock import patch
+from app.models.job_position import JobPosition, TechField, PositionType
+from app.db.database import SessionLocal
 
 @pytest.fixture(scope="function")
 def test_db():
@@ -49,30 +52,57 @@ def test_register_login_upload_and_get_interview(client, tmp_path):
     user = {"username": "apiuser", "email": "apiuser@example.com", "password": "12345678Aa!"}
     r = client.post(f"{settings.API_V1_STR}/users/register", json=user)
     assert r.status_code in (200, 201)
+    
     # 登录
     login_data = {"username": "apiuser", "password": "12345678Aa!"}
     r2 = client.post(f"{settings.API_V1_STR}/users/login", data=login_data)
     assert r2.status_code == 200
     token = r2.json()["access_token"]
+    
+    # 创建职位
+    db = SessionLocal()
+    job_position = JobPosition(
+        title="测试工程师",
+        tech_field=TechField.AI,
+        position_type=PositionType.TECHNICAL,
+        required_skills="Python, 测试自动化",
+        job_description="负责系统测试和自动化测试脚本开发",
+        evaluation_criteria="测试经验, 编程能力, 沟通能力"
+    )
+    db.add(job_position)
+    db.commit()
+    db.refresh(job_position)
+    job_position_id = job_position.id
+    db.close()
+    
     # 上传面试
     test_audio = tmp_path / "test_audio.mp3"
     test_audio.write_bytes(b"test audio content")
     form_data = {
         "title": "测试面试",
         "description": "desc",
-        "tech_field": "AI",
-        "position_type": "技术岗",
-        "job_position_id": "1"  # 假设ID为1的职位已存在
+        "job_position_id": str(job_position_id)
     }
-    with open(test_audio, "rb") as f:
-        files = {"file": ("test_audio.mp3", f, "audio/mpeg")}
-        resp = client.post(f"{settings.API_V1_STR}/interviews/upload/", data=form_data, files=files, headers={"Authorization": f"Bearer {token}"})
+    
+    # 模拟文件系统操作
+    with patch("app.api.api_v1.endpoints.interviews.os.path.exists", return_value=True):
+        with patch("app.api.api_v1.endpoints.interviews.os.makedirs", return_value=None):
+            with patch("app.api.api_v1.endpoints.interviews.shutil.copyfileobj") as mock_copy:
+                with open(test_audio, "rb") as f:
+                    files = {"file": ("test_audio.mp3", f, "audio/mpeg")}
+                    resp = client.post(f"{settings.API_V1_STR}/interviews/upload/", 
+                                      data=form_data, 
+                                      files=files, 
+                                      headers={"Authorization": f"Bearer {token}"})
+    
     assert resp.status_code in (200, 201)
     interview_id = resp.json()["id"]
+    
     # 获取面试列表
     resp2 = client.get(f"{settings.API_V1_STR}/interviews/", headers={"Authorization": f"Bearer {token}"})
     assert resp2.status_code == 200
     assert any(i["id"] == interview_id for i in resp2.json())
+    
     # 获取面试详情
     resp3 = client.get(f"{settings.API_V1_STR}/interviews/{interview_id}", headers={"Authorization": f"Bearer {token}"})
     assert resp3.status_code == 200

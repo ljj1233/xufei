@@ -1,6 +1,6 @@
 import pytest
 import json
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, mock_open
 from app.services.analysis_service import AnalysisService
 from app.models.interview import Interview, FileType
 from app.models.analysis import Analysis
@@ -94,9 +94,9 @@ class TestAnalysisService:
         
         # 模拟视频/音频文件存在
         with patch("os.path.exists", return_value=True):
-            with patch("builtins.open", MagicMock()):
+            with patch("builtins.open", mock_open(read_data=b"test audio content")):
                 # 执行分析
-                result = analysis_service.analyze_interview(interview.id)
+                result = analysis_service.analyze_interview(interview)
         
         # 验证分析结果
         assert result is not None
