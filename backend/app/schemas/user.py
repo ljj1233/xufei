@@ -11,6 +11,11 @@ class UserCreate(UserBase):
     """用户创建模型"""
     password: str
 
+class UserUpdate(BaseModel):
+    """用户更新模型"""
+    email: Optional[EmailStr] = None
+    password: Optional[str] = None
+
 class UserInDB(UserBase):
     """数据库中的用户模型"""
     id: int

@@ -99,18 +99,24 @@ def auth_headers(client):
 # 面试API测试
 class TestInterviewAPI:
     
-    def test_create_interview(self, client, test_db, auth_headers, tmp_path):
+    def test_create_interview(self, client, test_db, auth_headers):
         """测试创建面试记录"""
         # 获取测试用户和职位ID
         user = test_db.query(User).filter(User.username == "testuser").first()
         job_position = test_db.query(JobPosition).first()
         
-        # 创建测试音频文件
-        test_audio = tmp_path / "test_audio.mp3"
-        test_audio.write_bytes(b"test audio content")
+        # 使用固定的测试数据目录而不是临时目录
+        test_data_dir = os.path.join(os.path.dirname(__file__), "..", "analysis", "test_data")
+        os.makedirs(test_data_dir, exist_ok=True)
+        test_audio_path = os.path.join(test_data_dir, "test_audio.mp3")
+        
+        # 创建测试音频文件（如果不存在）
+        if not os.path.exists(test_audio_path):
+            with open(test_audio_path, "wb") as f:
+                f.write(b"test audio content")
         
         # 创建面试记录
-        with open(test_audio, "rb") as f:
+        with open(test_audio_path, "rb") as f:
             files = {"file": ("test_audio.mp3", f, "audio/mpeg")}
             form_data = {
                 "title": "测试面试",
@@ -313,9 +319,9 @@ class TestInterviewAnalysisAPI:
         assert response.status_code == 200
         data = response.json()
         assert data["overall_score"] == 85.5
-        assert "strengths" in data
-        assert "weaknesses" in data
-        assert "suggestions" in data
+        assert "strengths" in data["details"]
+        assert "weaknesses" in data["details"]
+        assert "suggestions" in data["details"]
         
     def test_get_interview_analysis(self, client, test_db, auth_headers):
         """测试获取面试分析结果"""

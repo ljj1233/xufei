@@ -33,7 +33,7 @@ async def search_job_positions(
     return job_positions
 
 # 创建职位
-@router.post("", response_model=JobPositionSchema)
+@router.post("", response_model=JobPositionSchema, status_code=201)
 async def create_job_position(
     job_position: JobPositionCreate,
     current_user: DBUser = Depends(get_current_user),

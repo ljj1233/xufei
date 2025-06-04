@@ -17,7 +17,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/users/login")
 router = APIRouter()
 
 
-@router.post("/register", response_model=schemas.User)
+@router.post("/register", response_model=schemas.User, status_code=201)
 def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     """注册新用户
     
@@ -44,7 +44,7 @@ def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
             logger.warning(f"邮箱已被注册: {user.email}")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="邮箱已被注册"
+                detail="Email already registered"
             )
         
         # 检查用户名是否已存在
@@ -55,7 +55,7 @@ def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
             logger.warning(f"用户名已被使用: {user.username}")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="用户名已被使用"
+                detail="Username already registered"
             )
         
         # 创建新用户
@@ -101,7 +101,7 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="用户名或密码不正确",
+            detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
@@ -109,7 +109,7 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
     if not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="用户名或密码不正确",
+            detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
@@ -135,6 +135,68 @@ def read_users_me(current_user: User = Depends(get_current_active_user)):
         User: 用户信息
     """
     return current_user
+
+
+@router.put("/me", response_model=schemas.User)
+def update_user(
+    user_update: schemas.UserUpdate,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """更新当前用户信息
+    
+    更新当前登录用户的信息
+    
+    Args:
+        user_update: 要更新的用户信息
+        current_user: 当前用户
+        db: 数据库会话
+        
+    Returns:
+        User: 更新后的用户信息
+    """
+    # 检查邮箱是否已被其他用户使用
+    if user_update.email and user_update.email != current_user.email:
+        db_user = db.query(User).filter(User.email == user_update.email).first()
+        if db_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already registered"
+            )
+    
+    # 更新用户信息
+    if user_update.email:
+        current_user.email = user_update.email
+    if user_update.password:
+        current_user.hashed_password = get_password_hash(user_update.password)
+    
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+    
+    return current_user
+
+
+@router.delete("/me", status_code=200)
+def delete_user(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """删除当前用户
+    
+    删除当前登录用户的账号
+    
+    Args:
+        current_user: 当前用户
+        db: 数据库会话
+        
+    Returns:
+        Dict: 操作结果
+    """
+    db.delete(current_user)
+    db.commit()
+    
+    return {"message": "User deleted successfully"}
 
 
 # 这个函数需要在auth.py中定义，这里只是引用

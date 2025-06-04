@@ -21,20 +21,15 @@ class AnalysisService:
         self.xunfei_service = xunfei_service or default_service
         self.db = db
     
-    def analyze_interview(self, interview_id: int) -> Dict[str, Any]:
+    def analyze_interview(self, interview: Interview) -> Dict[str, Any]:
         """分析面试
         
         Args:
-            interview_id: 面试ID
+            interview: 面试对象
             
         Returns:
             分析结果字典
         """
-        # 获取面试信息
-        interview = self.db.query(Interview).filter(Interview.id == interview_id).first()
-        if not interview:
-            raise ValueError(f"面试不存在: ID {interview_id}")
-            
         # 获取职位信息
         job_position = self.db.query(JobPosition).filter(JobPosition.id == interview.job_position_id).first()
         if not job_position:
@@ -79,7 +74,7 @@ class AnalysisService:
         
         # 保存分析结果到数据库
         db_analysis = Analysis(
-            interview_id=interview_id,
+            interview_id=interview.id,
             overall_score=overall_analysis["overall_score"],
             strengths=overall_analysis["strengths"],
             weaknesses=overall_analysis["weaknesses"],

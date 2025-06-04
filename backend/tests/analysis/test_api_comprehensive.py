@@ -7,14 +7,15 @@ from app.main import app
 from app.core.config import settings
 import os
 import json
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, mock_open
 from app.models.user import User
 from app.models.job_position import JobPosition, TechField, PositionType
 from app.models.interview import Interview, FileType
-from app.models.analysis import Analysis
+from app.models.analysis import InterviewAnalysis as DBAnalysis
 from app.core.security import get_password_hash
 import logging
 import io
+import cv2
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -134,7 +135,7 @@ def test_register_user(client, test_db):
             "password": "newpassword123"
         }
     )
-    assert response.status_code == 200
+    assert response.status_code == 201
     data = response.json()
     assert data["username"] == "newuser"
     assert data["email"] == "newuser@example.com"
@@ -150,7 +151,7 @@ def test_register_user(client, test_db):
         }
     )
     assert response.status_code == 400
-    assert "邮箱已被注册" in response.json()["detail"]
+    assert "already registered" in response.json()["detail"].lower()
     
     # 测试重复用户名注册
     response = client.post(
@@ -162,7 +163,7 @@ def test_register_user(client, test_db):
         }
     )
     assert response.status_code == 400
-    assert "用户名已被使用" in response.json()["detail"]
+    assert "already registered" in response.json()["detail"].lower()
 
 # 测试用户登录接口
 def test_login_user(client, test_db):
@@ -182,7 +183,7 @@ def test_login_user(client, test_db):
         data={"username": "testuser", "password": "wrongpassword"}
     )
     assert response.status_code == 401
-    assert "用户名或密码不正确" in response.json()["detail"]
+    assert "incorrect" in response.json()["detail"].lower()
     
     # 测试不存在的用户
     response = client.post(
@@ -190,7 +191,7 @@ def test_login_user(client, test_db):
         data={"username": "nonexistent", "password": "password123"}
     )
     assert response.status_code == 401
-    assert "用户名或密码不正确" in response.json()["detail"]
+    assert "incorrect" in response.json()["detail"].lower()
 
 # 测试获取当前用户信息
 def test_get_current_user(client, user_token):
@@ -220,7 +221,7 @@ def test_create_job_position(client, admin_token, user_token):
         json=job_data,
         headers={"Authorization": f"Bearer {admin_token}"}
     )
-    assert response.status_code == 200
+    assert response.status_code == 201
     data = response.json()
     assert data["title"] == "前端开发工程师"
     assert "id" in data
@@ -309,10 +310,12 @@ def test_delete_job_position(client, admin_token, test_db):
 @patch("app.api.api_v1.endpoints.interviews.shutil.copyfileobj")
 @patch("app.api.api_v1.endpoints.interviews.os.makedirs")
 @patch("app.api.api_v1.endpoints.interviews.cv2.VideoCapture")
-def test_upload_interview(mock_video_capture, mock_makedirs, mock_copyfileobj, client, user_token, test_db):
+@patch("builtins.open", new_callable=mock_open)
+def test_upload_interview(mock_open_file, mock_video_capture, mock_makedirs, mock_copyfileobj, client, user_token, test_db):
     # 模拟视频文件
     mock_video = MagicMock()
-    mock_video.get.return_value = 30.0  # 模拟30秒的视频
+    mock_video.isOpened.return_value = True
+    mock_video.get.side_effect = lambda x: 30.0 if x == cv2.CAP_PROP_FPS else 900 if x == cv2.CAP_PROP_FRAME_COUNT else 0
     mock_video_capture.return_value = mock_video
     
     # 获取职位ID
@@ -407,7 +410,7 @@ def test_get_interview(client, user_token, test_db):
     assert data["title"] == interview.title
 
 # 测试创建面试分析
-@patch("app.api.api_v1.endpoints.analysis.analyze_interview")
+@patch("app.services.analysis_service.AnalysisService.analyze_interview")
 def test_create_analysis(mock_analyze, client, user_token, test_db):
     # 模拟分析结果
     mock_analyze.return_value = {
@@ -459,16 +462,16 @@ def test_create_analysis(mock_analyze, client, user_token, test_db):
     interview_id = interview.id
     
     response = client.post(
-        f"/api/v1/analysis/{interview_id}",
+        f"/api/v1/interviews/{interview_id}/analyze",
         headers={"Authorization": f"Bearer {user_token}"}
     )
     assert response.status_code == 200
     data = response.json()
     assert data["interview_id"] == interview_id
-    assert data["overall_score"] == 85.5
-    assert "strengths" in data
-    assert "weaknesses" in data
-    assert "suggestions" in data
+    assert "details" in data
+    assert "strengths" in data["details"]
+    assert "weaknesses" in data["details"]
+    assert "suggestions" in data["details"]
 
 # 测试获取分析结果
 def test_get_analysis(client, user_token, test_db):
@@ -495,43 +498,29 @@ def test_get_analysis(client, user_token, test_db):
     interview_id = interview.id
     
     # 创建分析结果
-    analysis = Analysis(
+    analysis = DBAnalysis(
         interview_id=interview_id,
-        overall_score=85.5,
-        strengths=["沟通能力强", "专业知识扎实"],
-        weaknesses=["语速偏快", "眼神接触不足"],
-        suggestions=["放慢语速", "增加眼神接触"],
+        summary="面试分析结果",
+        score=85.5,
+        details={
+            "strengths": ["沟通能力强", "专业知识扎实"],
+            "weaknesses": ["语速偏快", "眼神接触不足"],
+            "suggestions": ["放慢语速", "增加眼神接触"]
+        },
         speech_clarity=90.0,
-        speech_pace=70.0,
-        speech_emotion="积极",
-        speech_logic=85.0,
-        facial_expressions={"happy": 0.7, "neutral": 0.3},
-        eye_contact=75.0,
-        body_language={"confidence": 80.0, "nervousness": 20.0},
-        content_relevance=90.0,
-        content_structure=85.0,
-        key_points=["项目经验", "技术能力", "团队协作"],
-        professional_knowledge=88.0,
-        skill_matching=85.0,
-        logical_thinking=87.0,
-        innovation_ability=80.0,
-        stress_handling=82.0,
-        situation_score=85.0,
-        task_score=87.0,
-        action_score=86.0,
-        result_score=88.0
+        overall_score=85.5
     )
     test_db.add(analysis)
     test_db.commit()
     
     response = client.get(
-        f"/api/v1/analysis/{interview_id}",
+        f"/api/v1/interviews/{interview_id}/analysis",
         headers={"Authorization": f"Bearer {user_token}"}
     )
     assert response.status_code == 200
     data = response.json()
     assert data["interview_id"] == interview_id
-    assert data["overall_score"] == 85.5
-    assert "strengths" in data
-    assert "weaknesses" in data
-    assert "suggestions" in data
+    assert "details" in data
+    assert "strengths" in data["details"]
+    assert "weaknesses" in data["details"]
+    assert "suggestions" in data["details"]

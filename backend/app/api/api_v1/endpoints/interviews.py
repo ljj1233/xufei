@@ -68,6 +68,59 @@ async def create_interview(
     Returns:
         Interview: 创建的面试记录
     """
+    return await _create_interview(file, title, description, job_position_id, db, current_user)
+
+
+@router.post("/upload/", response_model=schemas.Interview, status_code=status.HTTP_200_OK, response_model_exclude={"job_position"})
+async def upload_interview(
+    file: UploadFile = File(...),
+    title: str = Form(...),
+    description: Optional[str] = Form(None),
+    job_position_id: int = Form(...),
+    db: Session = Depends(get_db),
+    current_user: DBUser = Depends(get_current_active_user)
+):
+    """上传面试文件
+    
+    上传面试文件并创建面试记录 (兼容旧API)
+    
+    Args:
+        file: 上传的文件
+        title: 面试标题
+        description: 面试描述
+        job_position_id: 职位ID
+        db: 数据库会话
+        current_user: 当前用户
+        
+    Returns:
+        Interview: 创建的面试记录
+    """
+    return await _create_interview(file, title, description, job_position_id, db, current_user)
+
+
+async def _create_interview(
+    file: UploadFile,
+    title: str,
+    description: Optional[str],
+    job_position_id: int,
+    db: Session,
+    current_user: DBUser
+) -> Dict[str, Any]:
+    """内部函数：创建面试记录
+    
+    上传面试文件并创建面试记录
+    
+    Args:
+        file: 上传的文件
+        title: 面试标题
+        description: 面试描述
+        job_position_id: 职位ID
+        db: 数据库会话
+        current_user: 当前用户
+        
+    Returns:
+        Dict[str, Any]: 创建的面试记录
+    """
     logger.info(f"用户 {current_user.id}({current_user.username}) 创建面试记录")
     
     try:
@@ -77,7 +130,7 @@ async def create_interview(
             logger.warning(f"用户 {current_user.id} 尝试上传不支持的文件类型: {file_ext}")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"文件类型不支持，支持的类型: {', '.join(settings.ALLOWED_EXTENSIONS)}"
+                detail=f"File type not supported, allowed types: {', '.join(settings.ALLOWED_EXTENSIONS)}"
             )
         
         # 检查文件大小
@@ -89,13 +142,20 @@ async def create_interview(
             logger.warning(f"用户 {current_user.id} 尝试上传超大文件: {file_size} 字节")
             raise HTTPException(
                 status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                detail=f"文件大小超过限制，最大允许 {settings.MAX_CONTENT_LENGTH / (1024 * 1024)} MB"
+                detail=f"File size exceeds limit, maximum allowed: {settings.MAX_CONTENT_LENGTH / (1024 * 1024)} MB"
             )
+        
+        # 确保上传根目录存在
+        upload_folder = settings.UPLOAD_FOLDER
+        if not os.path.exists(upload_folder):
+            os.makedirs(upload_folder, exist_ok=True)
+            logger.info(f"创建上传根目录: {upload_folder}")
         
         # 创建用户上传目录
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-        user_upload_dir = os.path.join(settings.UPLOAD_FOLDER, f"user_{current_user.id}")
+        user_upload_dir = os.path.join(upload_folder, f"user_{current_user.id}")
         os.makedirs(user_upload_dir, exist_ok=True)
+        logger.info(f"确保用户上传目录存在: {user_upload_dir}")
         
         # 生成唯一文件名，避免覆盖
         base_filename = os.path.splitext(file.filename)[0]
@@ -112,15 +172,15 @@ async def create_interview(
             logger.error(f"保存文件失败: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"保存文件失败: {str(e)}"
+                detail=f"Failed to save file: {str(e)}"
             )
         
         # 确定文件类型和时长
-        file_type = "video" if file_ext in ["mp4", "avi", "mov"] else "audio"
+        file_type = FileType.VIDEO if file_ext in ["mp4", "avi", "mov"] else FileType.AUDIO
         duration = None
         
         # 如果是视频，获取时长
-        if file_type == "video":
+        if file_type == FileType.VIDEO:
             try:
                 video = cv2.VideoCapture(file_path)
                 if not video.isOpened():
@@ -209,6 +269,37 @@ async def get_interviews(
         List[Interview]: 面试记录列表
     """
     logger.info(f"用户 {current_user.id}({current_user.username}) 请求面试列表")
+    
+    interviews = db.query(DBInterview).filter(DBInterview.user_id == current_user.id).all()
+    
+    # 处理每个记录的job_position字段，避免序列化问题
+    result = []
+    for interview in interviews:
+        interview_dict = interview.__dict__.copy()
+        interview_dict["job_position"] = None
+        result.append(interview_dict)
+    
+    logger.info(f"返回 {len(interviews)} 条面试记录")
+    return result
+
+
+@router.get("/user", response_model=List[schemas.Interview], response_model_exclude={"job_position"})
+async def get_user_interviews(
+    db: Session = Depends(get_db),
+    current_user: DBUser = Depends(get_current_active_user)
+):
+    """获取用户的所有面试记录 (兼容旧API)
+    
+    返回当前用户的所有面试记录列表
+    
+    Args:
+        db: 数据库会话
+        current_user: 当前用户
+        
+    Returns:
+        List[Interview]: 面试记录列表
+    """
+    logger.info(f"用户 {current_user.id}({current_user.username}) 请求面试列表 (通过/user路径)")
     
     interviews = db.query(DBInterview).filter(DBInterview.user_id == current_user.id).all()
     
@@ -405,7 +496,7 @@ async def analyze_interview(
         logger.warning(f"面试记录不存在: ID={interview_id}")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="面试记录不存在"
+            detail="Interview not found"
         )
     
     # 检查是否已有分析结果
