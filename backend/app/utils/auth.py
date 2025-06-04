@@ -118,5 +118,5 @@ def get_current_active_user(current_user = Depends(get_current_user)):
         User: 当前活跃用户
     """
     if not current_user.is_active:
-        raise HTTPException(status_code=400, detail="用户未激活")
+        raise HTTPException(status_code=401, detail="Inactive user")
     return current_user

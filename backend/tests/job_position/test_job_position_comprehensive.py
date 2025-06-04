@@ -59,7 +59,7 @@ def test_create_job_position_comprehensive(admin_client, admin_token, admin_test
             json=position_data,
             headers={"Authorization": f"Bearer {admin_token}"}
         )
-        assert response.status_code == 200
+        assert response.status_code == 201
         data = response.json()
         assert data["title"] == position_data["title"]
         assert data["tech_field"] == position_data["tech_field"]

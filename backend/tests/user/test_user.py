@@ -136,4 +136,4 @@ def test_login_user_wrong_password(client):
     }
     response = client.post(f"{settings.API_V1_STR}/users/login", data=login_data)
     assert response.status_code == 401
-    assert "用户名或密码" in response.json()["detail"] or "错误" in response.json()["detail"]
+    assert "Incorrect username or password" in response.json()["detail"]

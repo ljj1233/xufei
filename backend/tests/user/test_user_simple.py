@@ -13,16 +13,10 @@ from app.core.config import settings
 import logging
 
 
-# MySQL 测试数据库连接字符串
-TEST_DATABASE_URL = (
-    f"mysql+pymysql://{settings.MYSQL_USER}:{settings.MYSQL_PASSWORD}"
-    f"@{settings.MYSQL_SERVER}:{settings.MYSQL_PORT}/interview_analysis_test"
-)
-
 @pytest.fixture(scope="function")
 def test_db():
     engine = create_engine(
-        TEST_DATABASE_URL,
+        settings.DATABASE_URI,
         echo=settings.DB_ECHO,
         pool_size=settings.DB_POOL_SIZE,
         max_overflow=settings.DB_MAX_OVERFLOW,
