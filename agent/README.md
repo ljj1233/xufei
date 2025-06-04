@@ -1,177 +1,173 @@
-# 多模态面试评测智能体 - AI智能体模块
+# 面试智能体项目
 
-本模块为多模态面试评测系统的AI智能体部分，专门负责面试音视频和内容的智能分析功能。通过将AI功能从后端分离，实现了更清晰的架构和更灵活的调用方式。
+基于LangGraph的面试辅导智能体系统，提供多模态分析和个性化辅导。
 
-## 技术栈
-- **Python 3.9+**：主要开发语言
-- **LangGraph**：工作流管理框架
-- **NumPy & SciPy**：科学计算
-- **librosa**：音频特征提取
-- **OpenCV**：视觉分析
-- **讯飞API**：语音评测与情感分析
-- **自适应学习系统**：模型参数动态调整
+## 功能特点
 
-## 目录结构
-```
-agent/
-├── docs/            # 文档
-├── src/             # 源代码
-│   ├── analyzers/   # 分析器模块
-│   │   ├── base/    # 基础分析器
-│   │   ├── speech/  # 语音分析
-│   │   ├── visual/  # 视觉分析
-│   │   └── content/ # 内容分析
-│   ├── core/        # 核心功能
-│   │   ├── agent/   # 智能体定义
-│   │   ├── system/  # 系统功能
-│   │   └── workflow/# 工作流管理
-│   ├── learning/    # 学习与适应
-│   ├── nodes/       # 工作流节点
-│   │   ├── executors/   # 执行节点
-│   │   └── processors/  # 处理节点
-│   ├── scenarios/   # 场景定义
-│   ├── services/    # 外部服务
-│   └── utils/       # 工具函数
-├── tests/           # 测试
-│   ├── unit/        # 单元测试
-│   ├── integration/ # 集成测试
-│   └── performance/ # 性能测试
-├── __init__.py      # 包初始化
-├── setup.py         # 安装配置
-└── requirements.txt # 依赖列表
-```
+- **多模态分析**：分析面试者的语音、视觉和内容表现
+- **智能反馈**：提供针对性的面试改进建议
+- **个性化辅导**：根据分析结果生成定制化学习路径
+- **RAG知识增强**：利用混合检索技术提供准确的知识支持
+- **异步API支持**：高效处理并发请求，提高响应速度
+- **个性化学习路径**：基于ModelScope和网络搜索生成定制化学习计划
 
-## 主要功能模块
+## 技术架构
 
-### 分析器（Analyzers）
-- **语音分析器**：评估语音清晰度、语速、情感等
-- **视觉分析器**：分析面部表情、眼神接触、肢体语言等
-- **内容分析器**：评估回答相关性、结构、关键点等
+- **LangGraph工作流**：基于有向图的任务编排和执行
+- **混合检索系统**：结合向量检索和关键词检索的RAG系统
+- **多模态分析**：语音、视觉和内容的综合分析
+- **异步处理**：基于asyncio的异步API调用
+- **外部知识集成**：支持Context7和WebSearch的知识检索
+- **学习路径生成**：结合ModelScope和RAG的个性化学习规划
 
-### 工作流节点（Nodes）
-- **分析执行节点**：负责调用各类分析器执行具体分析任务
-- **任务规划节点**：将复杂任务分解为子任务并确定执行顺序
-- **适应节点**：实现面试智能体的适应性调整
+## 快速开始
 
-### 核心功能（Core）
-- **状态管理**：定义和管理工作流状态
-- **智能体**：提供面向用户的API接口
-- **工作流**：基于LangGraph的工作流定义
+### 安装依赖
 
-### 学习与适应（Learning）
-- **适应管理器**：动态调整分析参数和阈值
-- **性能监控**：监控分析性能并触发适应
-
-## 安装与配置
-### 环境要求
-- Python 3.9+
-- 适当的GPU支持（推荐但非必须）
-
-### 安装步骤
-1. 克隆项目并进入agent目录
-2. 安装依赖：`pip install -r requirements.txt`
-3. 配置环境变量：
-   - XUNFEI_APPID：讯飞API的应用ID
-   - XUNFEI_API_KEY：讯飞API的密钥
-   - XUNFEI_API_SECRET：讯飞API的安全密钥
-
-### 开发安装
-如需进行开发，可以使用可编辑模式安装：
 ```bash
-pip install -e .
+pip install -r requirements.txt
 ```
 
-## 使用方法
-### 基本用法
+### 配置环境变量
+
+创建`.env`文件，配置必要的API密钥：
+
+```
+OPENAI_API_KEY=your_openai_api_key
+XUNFEI_APP_ID=your_xunfei_app_id
+XUNFEI_API_KEY=your_xunfei_api_key
+XUNFEI_API_SECRET=your_xunfei_api_secret
+```
+
+### 运行示例
+
+```bash
+# 面试分析示例
+python examples/interview_analysis.py
+
+# 学习路径生成示例
+python examples/learning_path_example.py
+```
+
+## 主要模块
+
+### 核心模块
+
+- **工作流引擎**：基于LangGraph的任务编排和执行
+- **系统配置**：灵活的配置管理
+- **状态管理**：工作流状态的追踪和更新
+
+### 分析模块
+
+- **语音分析**：评估语音清晰度、语速和情感
+- **视觉分析**：分析面部表情、眼神接触等
+- **内容分析**：评估回答的相关性、结构和深度
+
+### 检索模块
+
+- **混合检索器**：结合向量和关键词的混合检索
+- **向量数据库**：支持FAISS和内存索引
+- **文档处理器**：文本分块和元数据管理
+- **Context7集成**：外部库文档检索
+
+### 服务模块
+
+- **OpenAI服务**：与OpenAI API的异步交互
+- **讯飞服务**：与讯飞开放平台的异步交互
+- **ModelScope服务**：与ModelScope的模型交互
+- **WebSearch服务**：网络搜索功能
+
+### 学习路径模块
+
+- **学习需求分析**：基于面试结果分析学习需求
+- **资源检索**：结合RAG和网络搜索查找学习资源
+- **路径生成**：生成定制化学习时间线和里程碑
+- **ModelScope集成**：使用ModelScope模型生成学习报告
+
+## 学习路径生成器
+
+学习路径生成器基于面试分析结果，生成个性化的学习计划和资源推荐。整个流程包括：
+
+1. **需求分析**：使用ModelScope模型分析面试结果，生成学习需求报告
+2. **资源检索**：结合RAG系统和网络搜索查找相关学习资源
+3. **学习规划**：为每个需求领域创建学习路径，包括时间线和里程碑
+4. **资源推荐**：推荐针对性的学习资源，包括文章、课程、视频等
+
+### 示例用法
+
 ```python
-from agent import InterviewAgent, AgentConfig
-
-# 创建配置
-config = AgentConfig()
-
-# 创建智能体
-agent = InterviewAgent(config)
-
-# 分析面试
-result = agent.analyze(
-    video_path="path/to/video.mp4",
-    audio_path="path/to/audio.wav",
-    transcript="面试内容文本..."
+from xufei.agent.src.nodes.executors.learning_path_generator import (
+    LearningPathGenerator, 
+    LearningPathGeneratorInput
 )
 
-# 获取分析结果
-print(f"总体得分: {result.overall_score}")
-print(f"语音得分: {result.speech_score}")
-print(f"视觉得分: {result.visual_score}")
-print(f"内容得分: {result.content_score}")
-print(f"优势: {result.strengths}")
-print(f"不足: {result.weaknesses}")
-print(f"建议: {result.suggestions}")
+# 创建学习路径生成器
+generator = LearningPathGenerator()
+
+# 准备输入数据
+input_data = LearningPathGeneratorInput(
+    analysis_result=analysis_result,
+    job_position="后端工程师",
+    tech_field="后端开发",
+    time_constraint="三个月",
+    focus_areas=["系统设计", "算法", "数据库"]
+)
+
+# 生成学习路径
+output = await generator.generate(input_data)
+
+# 获取学习需求报告
+learning_report = output.learning_report
+
+# 获取学习路径
+learning_paths = output.learning_paths
 ```
 
-### 高级用法
-```python
-# 自定义配置
-custom_config = AgentConfig({
-    "speech": {
-        "clarity_weight": 0.4,
-        "pace_weight": 0.3,
-        "emotion_weight": 0.3
-    },
-    "visual": {
-        "expression_weight": 0.5,
-        "eye_contact_weight": 0.3,
-        "body_language_weight": 0.2
-    },
-    "content": {
-        "relevance_weight": 0.5,
-        "structure_weight": 0.3,
-        "key_points_weight": 0.2
-    }
-})
+## 项目结构
 
-# 创建带自定义配置的智能体
-agent = InterviewAgent(custom_config)
-
-# 流式处理（实时分析）
-for chunk in video_stream:
-    partial_result = agent.analyze_stream(chunk)
-    if partial_result:
-        print(f"实时得分: {partial_result.score}")
 ```
-
-## 测试
-- 单元测试：`python -m pytest tests/unit`
-- 集成测试：`python -m pytest tests/integration`
-- 性能测试：`python -m pytest tests/performance`
-
-## 性能优化
-- **并行处理**：支持多任务并行执行
-- **延迟加载**：分析器按需加载
-- **资源管理**：自动释放不需要的资源
-- **缓存机制**：避免重复计算
-
-## 扩展能力
-### 添加新分析器
-1. 在`src/analyzers`下创建新的分析器类
-2. 继承`Analyzer`基类并实现必要方法
-3. 在`AnalyzerFactory`中注册新分析器
-
-### 自定义工作流
-1. 在`src/nodes`下添加新的节点
-2. 在`src/core/workflow/graph.py`中更新工作流定义
-
-## 常见问题
-- **内存使用过高**：调整配置中的`max_workers`参数
-- **分析速度慢**：检查是否启用了GPU加速
-- **讯飞API连接失败**：检查API密钥和网络连接
+agent/
+├── src/
+│   ├── analyzers/         # 分析器模块
+│   │   ├── content/       # 内容分析
+│   │   ├── speech/        # 语音分析
+│   │   └── visual/        # 视觉分析
+│   ├── core/              # 核心模块
+│   │   ├── agent/         # 智能体定义
+│   │   ├── system/        # 系统功能
+│   │   └── workflow/      # 工作流定义
+│   ├── nodes/             # 工作流节点
+│   │   └── executors/     # 执行器
+│   │       └── learning_path_generator.py  # 学习路径生成器
+│   ├── retrieval/         # 检索模块
+│   │   ├── vector_db.py   # 向量数据库
+│   │   └── retriever.py   # 检索器
+│   ├── services/          # 服务模块
+│   │   ├── openai_service.py     # OpenAI服务
+│   │   ├── xunfei_service.py     # 讯飞服务
+│   │   ├── websearch_service.py  # 网络搜索服务
+│   │   └── modelscope_service.py # ModelScope服务
+│   └── utils/             # 工具模块
+├── examples/              # 示例代码
+│   ├── interview_analysis.py     # 面试分析示例
+│   └── learning_path_example.py  # 学习路径生成示例
+├── tests/                 # 测试代码
+├── requirements.txt       # 依赖列表
+└── README.md              # 项目说明
+```
 
 ## 贡献指南
-1. Fork项目
-2. 创建分支
-3. 提交PR
 
----
-> 本智能体模块与前端、后端共同组成完整的多模态面试评测系统。详细集成方式请参考`backend/README.md`。
+欢迎贡献代码、报告问题或提出建议。请遵循以下步骤：
+
+1. Fork本仓库
+2. 创建特性分支：`git checkout -b feature/your-feature-name`
+3. 提交更改：`git commit -m 'Add some feature'`
+4. 推送到分支：`git push origin feature/your-feature-name`
+5. 提交Pull Request
+
+## 许可证
+
+本项目采用MIT许可证。详见[LICENSE](LICENSE)文件。
 
 
