@@ -189,9 +189,9 @@ def test_update_user(admin_client, test_user_token, admin_test_db):
     assert data["username"] == "testuser"  # 用户名应该保持不变
     assert data["email"] == "updated@example.com"  # 邮箱应该更新
 
-# 测试更改密码 - 测试API不存在的功能
+# 测试更改密码
 def test_change_password(admin_client, test_user_token):
-    # 测试更改密码功能，预期返回404因为API不存在
+    # 测试更改密码功能
     response = admin_client.post(
         "/api/v1/users/change-password",
         json={
@@ -200,10 +200,29 @@ def test_change_password(admin_client, test_user_token):
         },
         headers={"Authorization": f"Bearer {test_user_token}"}
     )
-    # 断言API不存在
-    assert response.status_code == 404
+    assert response.status_code == 200
+    
+    # 测试使用新密码登录
+    response = admin_client.post(
+        "/api/v1/users/login",
+        data={"username": "testuser", "password": "newpassword456"}
+    )
+    assert response.status_code == 200
+    assert "access_token" in response.json()
+    
+    # 测试使用错误的当前密码
+    response = admin_client.post(
+        "/api/v1/users/change-password",
+        json={
+            "current_password": "wrongpassword",
+            "new_password": "anotherpassword"
+        },
+        headers={"Authorization": f"Bearer {test_user_token}"}
+    )
+    assert response.status_code == 400
+    assert "Incorrect password" in response.json()["detail"]
 
-# 测试管理员功能 - 测试API不存在的功能
+# 测试管理员功能
 def test_admin_functions(admin_client, admin_token, admin_test_db):
     # 创建普通用户
     regular_user = User(
@@ -217,15 +236,73 @@ def test_admin_functions(admin_client, admin_token, admin_test_db):
     admin_test_db.commit()
     admin_test_db.refresh(regular_user)
     
-    # 测试管理员API，预期返回404因为API不存在
+    # 测试管理员获取所有用户
     response = admin_client.get(
         "/api/v1/users/",
         headers={"Authorization": f"Bearer {admin_token}"}
     )
-    # 断言API不存在
+    assert response.status_code == 200
+    users = response.json()
+    assert len(users) >= 2  # 至少有管理员和普通用户
+    
+    # 测试管理员获取特定用户
+    response = admin_client.get(
+        f"/api/v1/users/{regular_user.id}",
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert response.status_code == 200
+    user_data = response.json()
+    assert user_data["username"] == "regularuser"
+    assert user_data["email"] == "regular@example.com"
+    
+    # 测试管理员更新用户状态
+    response = admin_client.patch(
+        f"/api/v1/users/{regular_user.id}/status",
+        json={"is_active": False},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert response.status_code == 200
+    user_data = response.json()
+    assert not user_data["is_active"]
+    
+    # 测试管理员授予管理员权限
+    response = admin_client.patch(
+        f"/api/v1/users/{regular_user.id}/admin",
+        json={"is_admin": True},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert response.status_code == 200
+    user_data = response.json()
+    assert user_data["is_admin"]
+    
+    # 测试管理员删除用户
+    # 创建另一个用户用于删除测试
+    delete_user = User(
+        username="deleteuser",
+        email="delete@example.com",
+        hashed_password=get_password_hash("delete123"),
+        is_active=True,
+        is_admin=False
+    )
+    admin_test_db.add(delete_user)
+    admin_test_db.commit()
+    admin_test_db.refresh(delete_user)
+    
+    response = admin_client.delete(
+        f"/api/v1/users/{delete_user.id}",
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert response.status_code == 200
+    assert "deleted successfully" in response.json()["message"]
+    
+    # 验证用户已被删除
+    response = admin_client.get(
+        f"/api/v1/users/{delete_user.id}",
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
     assert response.status_code == 404
 
-# 测试权限控制 - 测试API不存在的功能
+# 测试权限控制
 def test_permission_control(admin_client, test_user_token, admin_token, admin_test_db):
     # 创建另一个普通用户
     another_user = User(
@@ -239,10 +316,39 @@ def test_permission_control(admin_client, test_user_token, admin_token, admin_te
     admin_test_db.commit()
     admin_test_db.refresh(another_user)
     
-    # 测试权限控制API，预期返回404因为API不存在
+    # 测试普通用户无法访问管理员API
     response = admin_client.get(
         "/api/v1/users/",
         headers={"Authorization": f"Bearer {test_user_token}"}
     )
-    # 断言API不存在
-    assert response.status_code == 404
+    assert response.status_code == 403
+    
+    # 测试普通用户无法获取特定用户信息
+    response = admin_client.get(
+        f"/api/v1/users/{another_user.id}",
+        headers={"Authorization": f"Bearer {test_user_token}"}
+    )
+    assert response.status_code == 403
+    
+    # 测试普通用户无法更新用户状态
+    response = admin_client.patch(
+        f"/api/v1/users/{another_user.id}/status",
+        json={"is_active": False},
+        headers={"Authorization": f"Bearer {test_user_token}"}
+    )
+    assert response.status_code == 403
+    
+    # 测试普通用户无法授予管理员权限
+    response = admin_client.patch(
+        f"/api/v1/users/{another_user.id}/admin",
+        json={"is_admin": True},
+        headers={"Authorization": f"Bearer {test_user_token}"}
+    )
+    assert response.status_code == 403
+    
+    # 测试普通用户无法删除用户
+    response = admin_client.delete(
+        f"/api/v1/users/{another_user.id}",
+        headers={"Authorization": f"Bearer {test_user_token}"}
+    )
+    assert response.status_code == 403

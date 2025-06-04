@@ -486,46 +486,140 @@ response = admin_client.post(
 
 **修改文件**：`tests/interview/test_interview_analysis_comprehensive.py`
 
-## 待修复问题
+## 已修复问题（第五阶段 - 2025年6月4日）
 
-1. 综合测试中的状态码期望不一致问题（test_register_user、test_create_job_position）
-2. 面试上传接口的文件保存路径问题
-3. 面试分析接口路径问题（/api/v1/analysis/{interview_id}）
-4. 获取用户面试列表接口路径问题（/api/v1/interviews/user）
+### 1. 管理员功能缺失问题
+
+**问题描述**：系统缺少完整的管理员功能，导致`test_admin_functions`和`test_permission_control`测试失败。
+
+**解决方案**：实现完整的管理员API，包括获取所有用户、获取特定用户、更新用户状态、授予管理员权限和删除用户的功能。
+
+```python
+# 管理员API：获取所有用户
+@router.get("/", response_model=List[schemas.User])
+def get_users(
+    skip: int = 0, 
+    limit: int = 100, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin)
+):
+    # 实现获取所有用户的逻辑
+    users = db.query(User).offset(skip).limit(limit).all()
+    return users
+
+# 管理员API：获取特定用户
+@router.get("/{user_id}", response_model=schemas.User)
+def get_user(
+    user_id: int, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin)
+):
+    # 实现获取特定用户的逻辑
+    # ...
+
+# 其他管理员API...
+```
+
+**修改文件**：`app/api/api_v1/endpoints/users.py`
+
+### 2. 用户状态更新和管理员权限更新模型缺失
+
+**问题描述**：缺少用户状态更新和管理员权限更新的模型类，导致相关API无法正常工作。
+
+**解决方案**：添加`UserStatusUpdate`和`UserAdminUpdate`模型类。
+
+```python
+class UserStatusUpdate(BaseModel):
+    """用户状态更新模型"""
+    is_active: bool
+
+class UserAdminUpdate(BaseModel):
+    """用户管理员权限更新模型"""
+    is_admin: bool
+```
+
+**修改文件**：
+- `app/schemas/user.py`
+- `app/models/schemas.py`
+
+### 3. 密码更改功能缺失
+
+**问题描述**：缺少密码更改功能，导致`test_change_password`测试失败。
+
+**解决方案**：实现密码更改API，并添加相应的模型类。
+
+```python
+# 添加密码更改模型
+class PasswordChange(BaseModel):
+    """密码更改模型"""
+    current_password: str
+    new_password: str
+
+# 更改密码
+@router.post("/change-password", response_model=schemas.User)
+def change_password(
+    password_data: PasswordChange,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    # 实现密码更改逻辑
+    # ...
+```
+
+**修改文件**：`app/api/api_v1/endpoints/users.py`
+
+### 4. 管理员权限控制问题
+
+**问题描述**：缺少对管理员权限的严格控制，如防止删除最后一个管理员账号或撤销其权限。
+
+**解决方案**：添加管理员权限控制逻辑。
+
+```python
+# 不允许停用最后一个管理员账号
+if user.is_admin and not user_status.is_active:
+    admin_count = db.query(User).filter(User.is_admin == True, User.is_active == True).count()
+    if admin_count <= 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot deactivate the last admin account"
+        )
+```
+
+**修改文件**：`app/api/api_v1/endpoints/users.py`
+
+### 5. 测试用例期望值与实际API行为不一致
+
+**问题描述**：`test_user_management_comprehensive.py`中的测试用例期望值与实际API行为不一致，导致测试失败。
+
+**解决方案**：更新测试用例，使其期望值与实际API行为一致。
+
+```python
+# 修改前
+def test_admin_functions(admin_client, admin_token, admin_test_db):
+    # ... 其他代码 ...
+    # 断言API不存在
+    assert response.status_code == 404
+
+# 修改后
+def test_admin_functions(admin_client, admin_token, admin_test_db):
+    # ... 其他代码 ...
+    assert response.status_code == 200
+    users = response.json()
+    assert len(users) >= 2  # 至少有管理员和普通用户
+```
+
+**修改文件**：`tests/user/test_user_management_comprehensive.py`
 
 ## 总结
 
-通过三个阶段的修复，我们已经成功解决了所有测试失败问题。这些修复主要集中在以下几个方面：
+通过五个阶段的修复，我们已经成功解决了所有测试失败问题，并增强了系统功能，特别是管理员相关功能。这些修复主要集中在以下几个方面：
 
-### 第一阶段修复
+1. **API路径和状态码统一**：确保API路径和状态码符合RESTful规范
+2. **参数类型处理**：增强方法参数类型处理能力，提高代码健壮性
+3. **测试模拟**：使用mock对象模拟文件系统和数据库操作，提高测试可靠性
+4. **错误消息统一**：将错误消息统一为英文，提高国际化支持
+5. **管理员功能增强**：实现完整的用户管理API，包括用户查看、状态管理、权限分配和删除功能
+6. **密码管理功能**：添加密码更改功能，提高用户账号安全性
+7. **权限控制增强**：添加严格的管理员权限控制，防止系统出现无管理员状态
 
-1. 调整测试断言以匹配实际API返回结构
-2. 改进测试用例的环境兼容性
-3. 修正方法参数类型和调用方式
-4. 修复错误的导入路径
-
-### 第二阶段修复
-
-1. 统一API状态码规范（注册、创建资源时返回201）
-2. 添加缺失的API接口（用户更新、删除）
-3. 添加缺失的模型类（UserUpdate）
-4. 统一错误消息为英文
-5. 添加兼容路由（面试上传、获取用户面试列表）
-6. 修复文件上传路径问题
-
-### 第三阶段修复
-
-1. 修复综合测试中的状态码期望不一致问题
-2. 修复面试分析接口路径问题
-3. 使用mock对象解决测试中的文件系统交互问题
-4. 修复分析模型导入和字段不一致问题
-
-### 第四阶段修复
-
-1. 修复`analyze_interview`方法参数类型问题
-2. 添加测试中的mock问题
-3. 添加测试中的文件系统操作问题
-4. 修复用户登录问题
-5. 修复分析模型和API路径问题
-
-所有测试现在都能成功通过，表明API功能正常工作。这些修复不仅解决了测试失败问题，还提高了代码的质量和一致性。
+所有测试现在都能成功通过，表明API功能正常工作。这些修复不仅解决了测试失败问题，还提高了代码的质量、一致性和系统的功能完整性。

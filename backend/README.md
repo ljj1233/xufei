@@ -14,6 +14,7 @@
 - **Librosa**：音频特征提取
 - **OpenCV**：视频处理和特征提取
 - **Transformers**：自然语言处理
+- **Pytest**：单元测试和集成测试
 
 ## 目录结构
 
@@ -47,14 +48,17 @@ backend/
 │   └── main.py             # FastAPI入口
 ├── tests/                  # 测试
 │   ├── conftest.py         # 测试配置
-│   ├── test_user_api.py    # 用户API测试
-│   ├── test_interview_api.py # 面试API测试
-│   └── test_analysis_service.py # 分析服务测试
+│   ├── conftest_admin.py   # 管理员测试配置
+│   ├── user/               # 用户相关测试
+│   ├── interview/          # 面试相关测试
+│   ├── analysis/           # 分析相关测试
+│   └── job_position/       # 职位相关测试
 ├── alembic/                # 数据库迁移
 ├── requirements.txt        # 依赖项
 ├── .env.example            # 环境变量示例
 ├── MYSQL_MIGRATION_GUIDE.md # MySQL迁移说明
 ├── DEVELOPMENT_LOG.md      # 开发日志
+├── TEST_FIX_LOG.md         # 测试修复日志
 └── README.md               # 项目说明
 ```
 
@@ -126,7 +130,13 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
 
 - 用户注册与登录
 - 用户信息管理
+- 密码修改
 - 权限控制
+- 管理员功能
+  - 用户列表查看
+  - 用户状态管理（激活/停用）
+  - 管理员权限分配
+  - 用户删除
 
 ### 2. 面试管理
 
@@ -146,6 +156,14 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
 - 优势与劣势分析
 - 改进建议生成
 
+### 5. 职位管理
+
+- 职位创建与管理
+- 技术领域分类
+- 职位类型分类
+- 职位要求设置
+- 职位搜索
+
 ## 测试
 
 ```bash
@@ -153,11 +171,19 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
 pytest
 
 # 运行特定测试
-pytest tests/test_user_api.py
+pytest tests/user/test_user_api.py
 
 # 生成覆盖率报告
 pytest --cov=app tests/
 ```
+
+### 测试结构
+
+- **单元测试**：测试独立功能单元
+- **集成测试**：测试API端点和数据库交互
+- **综合测试**：测试完整业务流程
+
+详细的测试修复记录请参考[TEST_FIX_LOG.md](TEST_FIX_LOG.md)。
 
 ## 部署
 
@@ -196,6 +222,12 @@ gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000
 - 检查上传目录权限
 - 确认文件大小是否超过限制
 - 检查文件类型是否支持
+
+### 测试失败
+
+- 确认测试环境配置正确
+- 检查测试数据是否完整
+- 参考TEST_FIX_LOG.md中的常见问题解决方案
 
 ## 开发指南
 

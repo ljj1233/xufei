@@ -16,6 +16,14 @@ class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
     password: Optional[str] = None
 
+class UserStatusUpdate(BaseModel):
+    """用户状态更新模型"""
+    is_active: bool
+
+class UserAdminUpdate(BaseModel):
+    """用户管理员权限更新模型"""
+    is_admin: bool
+
 class UserInDB(UserBase):
     """数据库中的用户模型"""
     id: int
