@@ -93,6 +93,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import RadarChart from '../components/charts/RadarChart.vue'
+import { interviewSessionAPI } from '../api/interviewSession'
 
 // 获取路由参数
 const route = useRoute()
@@ -101,37 +102,32 @@ const sessionId = route.params.sessionId
 const report = ref(null)
 const isLoading = ref(true)
 
-// 模拟数据 - 实际应用中应从API获取
+// 从API获取报告数据
 onMounted(async () => {
   try {
-    // 实际项目中替换为API调用
-    // const { data } = await axios.get(`/api/interview-reports/${sessionId}`)
-    // 模拟API响应
-    setTimeout(() => {
-      report.value = {
-        id: sessionId,
-        createdAt: new Date(),
-        overallScore: 7.5,
-        scores: {
-          professionalKnowledge: 8.0, 
-          communicationSkills: 7.2,
-          problemSolving: 6.8,
-          attitudeAndPotential: 8.1,
-          culturalFit: 7.9
-        },
-        qaList: [
-          { type: 'question', content: '请简单介绍一下你自己和你的项目经验。' },
-          { type: 'answer', content: '我是一名有5年经验的前端开发工程师，专注于Vue和React生态系统。我曾参与多个大型电商和SaaS平台的开发，负责前端架构设计和核心功能实现。', feedback: '回答流畅简洁，重点突出，但可以更具体地提及一个项目的技术挑战和解决方案。' },
-          { type: 'question', content: '你如何处理前端性能优化问题？' },
-          { type: 'answer', content: '我通常从几个方面入手：资源加载优化、渲染性能优化和代码效率优化。具体包括使用懒加载、代码分割、缓存策略、减少DOM操作等技术。', feedback: '回答框架清晰，但缺少具体的性能指标和实际案例支持。' }
-        ],
-        overallFeedback: '<p>整体表现良好，专业知识扎实，沟通清晰。</p><p>建议：<ul><li>回答问题时可以多提供具体实例</li><li>在技术讨论时可以更深入分析问题的根源</li><li>适当展示解决复杂问题的思路</li></ul></p>'
-      }
-      isLoading.value = false
-    }, 1000)
+    isLoading.value = true
+    // 调用API获取报告数据
+    const result = await interviewSessionAPI.getReport(sessionId)
+    report.value = result
+    isLoading.value = false
   } catch (error) {
-    ElMessage.error('获取报告失败')
-    console.error(error)
+    console.error('获取报告失败:', error)
+    
+    // 处理不同类型的错误
+    if (error.response) {
+      if (error.response.status === 403) {
+        ElMessage.warning('您没有权限查看此报告')
+      } else if (error.response.status === 404) {
+        ElMessage.warning('报告不存在或已被删除')
+      } else {
+        ElMessage.error('获取报告失败：' + (error.response.data?.detail || '服务器错误'))
+      }
+    } else if (error.code === 'ECONNABORTED') {
+      ElMessage.error('请求超时，请检查网络连接')
+    } else {
+      ElMessage.error('获取报告失败：' + (error.message || '未知错误'))
+    }
+    
     isLoading.value = false
   }
 })

@@ -9,6 +9,7 @@
             <h2>准备好展示最好的自己了吗？</h2>
             <p>上传您的面试视频或音频，让AI助手为您提供专业评估和改进建议。</p>
             <p>每次练习都是进步的机会！</p>
+            <UploadAnimation type="upload" class="intro-animation" />
           </div>
         </el-col>
         <el-col :xs="24" :md="12">
@@ -181,16 +182,24 @@
           </h3>
         </div>
         
-        <TipCard important>
-          <template #default>
-            <h4>上传提示</h4>
-            <ul class="upload-tips">
-              <li><strong>视频质量</strong>：确保视频清晰，光线充足，面部可见</li>
-              <li><strong>音频质量</strong>：确保音频清晰，背景噪音小</li>
-              <li><strong>时长建议</strong>：建议上传3-10分钟的面试片段</li>
-            </ul>
-          </template>
-        </TipCard>
+        <el-row :gutter="20">
+          <el-col :md="12" :sm="24">
+            <TipCard important>
+              <template #default>
+                <h4>上传提示</h4>
+                <ul class="upload-tips">
+                  <li><strong>视频质量</strong>：确保视频清晰，光线充足，面部可见</li>
+                  <li><strong>音频质量</strong>：确保音频清晰，背景噪音小</li>
+                  <li><strong>时长建议</strong>：建议上传3-10分钟的面试片段</li>
+                </ul>
+              </template>
+            </TipCard>
+          </el-col>
+          
+          <el-col :md="12" :sm="24" class="upload-animation-container">
+            <UploadAnimation type="upload" />
+          </el-col>
+        </el-row>
         
         <div class="upload-area">
           <p>支持的格式：MP4, AVI, MOV, MP3, WAV (最大100MB)</p>
@@ -242,7 +251,7 @@
     <div v-if="uploading" class="card">
       <h3>处理进度</h3>
       <div class="progress-status">
-        <EmotionIcons type="loading" />
+        <UploadAnimation type="analysis" />
         <p>{{ statusText }}</p>
       </div>
       <el-progress :percentage="progressPercentage" :status="progressStatus" />
@@ -257,7 +266,7 @@
       >
         <template #icon>
           <div class="custom-result-icon">
-            <EmotionIcons type="success" />
+            <UploadAnimation type="complete" />
           </div>
         </template>
         <template #extra>
@@ -279,6 +288,7 @@ import { Document, UploadFilled } from '@element-plus/icons-vue'
 import EmotionIcons from '../components/EmotionIcons.vue'
 import TipCard from '../components/TipCard.vue'
 import InterviewPrep from '../components/InterviewPrep.vue'
+import UploadAnimation from '../components/UploadAnimation.vue'
 
 const router = useRouter()
 const interviewStore = useInterviewStore()
@@ -460,7 +470,7 @@ const simulateProgress = () => {
 
 // 查看报告
 const viewReport = () => {
-  router.push(`/report/${uploadedInterviewId.value}`)
+  router.push(`/interview-report/${uploadedInterviewId.value}`)
 }
 
 // 重置表单
@@ -501,142 +511,202 @@ onMounted(() => {
 
 .page-title {
   text-align: center;
-  color: #1E88E5;
   margin-bottom: 30px;
+  color: var(--primary-color);
+  font-size: 28px;
 }
 
 .upload-intro {
+  background-color: var(--bg-primary);
+  border-radius: var(--border-radius-base);
+  padding: 30px;
   margin-bottom: 30px;
+  box-shadow: var(--box-shadow-light);
 }
 
 .intro-text {
-  padding: 20px;
-  background-color: #f0f8ff;
-  border-radius: 8px;
-  height: 100%;
   display: flex;
   flex-direction: column;
   justify-content: center;
+  height: 100%;
 }
 
 .intro-text h2 {
-  color: #1E88E5;
-  margin-top: 0;
+  color: var(--primary-color);
+  margin-bottom: 20px;
+  font-size: 24px;
+}
+
+.intro-text p {
+  margin: 10px 0;
+  color: var(--text-secondary);
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.intro-animation {
+  margin: 20px auto 0;
 }
 
 .card {
-  background-color: #fff;
-  border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 20px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  background-color: var(--bg-primary);
+  border-radius: var(--border-radius-base);
+  padding: 30px;
+  margin-bottom: 30px;
+  box-shadow: var(--box-shadow-light);
 }
 
 .steps-nav {
   display: flex;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
   margin-bottom: 30px;
 }
 
 .step-item {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  position: relative;
-  width: 100px;
+  width: 120px;
 }
 
 .step-number {
-  width: 30px;
-  height: 30px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  background-color: #dcdfe6;
-  color: #fff;
+  background-color: #edf2f7;
+  color: #a0aec0;
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-bottom: 8px;
   font-weight: bold;
+  margin-bottom: 8px;
   transition: all 0.3s;
+  border: 2px solid #e2e8f0;
+}
+
+.step-item.active .step-number {
+  background-color: var(--primary-color);
+  color: white;
+  border-color: var(--primary-light);
 }
 
 .step-label {
   font-size: 14px;
-  color: #909399;
+  color: var(--text-secondary);
   transition: all 0.3s;
 }
 
+.step-item.active .step-label {
+  color: var(--primary-color);
+  font-weight: 500;
+}
+
 .step-connector {
-  flex: 1;
+  flex-grow: 1;
   height: 2px;
-  background-color: #dcdfe6;
+  background-color: #e2e8f0;
   margin: 0 10px;
   position: relative;
-  top: -15px;
-}
-
-.step-item.active .step-number {
-  background-color: #1E88E5;
-}
-
-.step-item.active .step-label {
-  color: #1E88E5;
-  font-weight: bold;
+  top: -16px;
+  max-width: 100px;
 }
 
 .step-header {
   margin-bottom: 20px;
-  border-bottom: 1px solid #ebeef5;
+  border-bottom: 1px solid var(--border-light);
   padding-bottom: 10px;
 }
 
 .step-header h3 {
   display: flex;
   align-items: center;
-  gap: 10px;
   margin: 0;
-  color: #303133;
+  color: var(--primary-color);
+  font-size: 18px;
+}
+
+.step-header h3 span {
+  margin-left: 8px;
 }
 
 .step-actions {
   display: flex;
   justify-content: flex-end;
-  margin-top: 30px;
   gap: 10px;
+  margin-top: 30px;
 }
 
 .upload-area {
+  padding: 20px;
+  border: 1px dashed var(--border-color);
+  border-radius: var(--border-radius-base);
+  background-color: var(--bg-secondary);
   text-align: center;
-  margin: 20px 0;
+  margin-top: 20px;
 }
 
-.upload-tips {
-  padding-left: 20px;
-  line-height: 1.8;
+.upload-area p {
+  color: var(--text-secondary);
+  margin-bottom: 15px;
 }
 
 .privacy-notice {
-  margin: 20px 0;
+  margin-top: 20px;
 }
 
 .progress-status {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 15px;
+  margin: 20px 0;
+}
+
+.progress-status p {
+  margin: 15px 0;
+  font-weight: 500;
+  color: var(--primary-color);
 }
 
 .success-card {
-  background: linear-gradient(135deg, #f0f8ff 0%, #e1f5fe 100%);
+  text-align: center;
 }
 
 .custom-result-icon {
-  font-size: 72px;
-  margin-bottom: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
-@media (max-width: 768px) {
+.upload-tips {
+  list-style-type: none;
+  padding: 0;
+}
+
+.upload-tips li {
+  margin-bottom: 10px;
+  padding-left: 20px;
+  position: relative;
+  line-height: 1.5;
+}
+
+.upload-tips li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  color: var(--primary-color);
+  font-weight: bold;
+}
+
+.upload-animation-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+@media (max-width: 767px) {
   .steps-nav {
     flex-direction: column;
     gap: 10px;
@@ -654,6 +724,10 @@ onMounted(() => {
     width: 100%;
     justify-content: flex-start;
     gap: 10px;
+  }
+  
+  .step-number {
+    margin-bottom: 0;
   }
 }
 </style>

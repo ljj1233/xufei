@@ -252,7 +252,7 @@ export default {
     
     // 查看详细报告
     const viewDetailReport = () => {
-      router.push(`/report/${sessionId}`)
+      router.push(`/interview-report/${sessionId}`)
     }
     
     // 获取评分颜色

@@ -1,47 +1,53 @@
 <template>
   <div class="user-container">
-    <el-card class="user-card">
-      <template #header>
-        <div class="card-header">
-          <h2>个人中心</h2>
-        </div>
-      </template>
+    <h1 class="page-title">个人中心</h1>
+    
+    <el-row :gutter="24">
+      <el-col :md="8" :sm="24">
+        <el-card class="user-card">
+          <template #header>
+            <div class="card-header">
+              <h3>个人信息</h3>
+              <div class="action-buttons">
+                <el-button type="primary" link @click="showEditDialog">
+                  <el-icon><Edit /></el-icon>编辑资料
+                </el-button>
+              </div>
+            </div>
+          </template>
+          
+          <div v-if="loading" class="loading-container">
+            <el-skeleton :rows="3" animated />
+          </div>
+          
+          <div v-else class="user-info">
+            <div class="user-avatar">
+              <el-avatar :size="80" src="https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png" />
+            </div>
+            <div class="user-details">
+              <div class="user-name">{{ userInfo.username }}</div>
+              <div class="user-email">{{ userInfo.email || '未设置邮箱' }}</div>
+              <div class="user-since">注册时间：{{ formatDate(userInfo.created_at) }}</div>
+            </div>
+            
+            <div class="user-actions">
+              <el-button type="warning" plain size="small" @click="showPasswordDialog">
+                <el-icon><Lock /></el-icon>修改密码
+              </el-button>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
       
-      <div v-if="loading" class="loading-container">
-        <el-skeleton :rows="3" animated />
-      </div>
-      
-      <div v-else>
-        <el-descriptions title="用户信息" :column="1" border>
-          <el-descriptions-item label="用户名">{{ userInfo.username }}</el-descriptions-item>
-          <el-descriptions-item label="邮箱">{{ userInfo.email }}</el-descriptions-item>
-          <el-descriptions-item label="注册时间">{{ formatDate(userInfo.created_at) }}</el-descriptions-item>
-        </el-descriptions>
-        
-        <div class="action-buttons">
-          <el-button type="primary" @click="showEditDialog">修改信息</el-button>
-          <el-button type="warning" @click="showPasswordDialog">修改密码</el-button>
-        </div>
-        
-        <el-divider content-position="center">使用统计</el-divider>
-        
-        <el-row :gutter="20">
-          <el-col :span="8">
-            <el-statistic title="面试次数" :value="stats.interview_count" />
-          </el-col>
-          <el-col :span="8">
-            <el-statistic title="平均分数" :value="stats.average_score" :precision="1" />
-          </el-col>
-          <el-col :span="8">
-            <el-statistic title="最高分数" :value="stats.highest_score" :precision="1" />
-          </el-col>
-        </el-row>
-      </div>
-    </el-card>
+      <el-col :md="16" :sm="24">
+        <!-- 面试统计组件 -->
+        <interview-statistics />
+      </el-col>
+    </el-row>
     
     <!-- 修改信息对话框 -->
-    <el-dialog v-model="editDialogVisible" title="修改个人信息" width="500px">
-      <el-form :model="editForm" :rules="editRules" ref="editFormRef" label-width="80px">
+    <el-dialog v-model="editDialogVisible" title="编辑个人资料" width="500px" destroy-on-close>
+      <el-form :model="editForm" :rules="editRules" ref="editFormRef" label-width="100px">
         <el-form-item label="用户名" prop="username">
           <el-input v-model="editForm.username" placeholder="请输入用户名"></el-input>
         </el-form-item>
@@ -62,7 +68,7 @@
     </el-dialog>
     
     <!-- 修改密码对话框 -->
-    <el-dialog v-model="passwordDialogVisible" title="修改密码" width="500px">
+    <el-dialog v-model="passwordDialogVisible" title="修改密码" width="500px" destroy-on-close>
       <el-form :model="passwordForm" :rules="passwordRules" ref="passwordFormRef" label-width="100px">
         <el-form-item label="当前密码" prop="currentPassword">
           <el-input v-model="passwordForm.currentPassword" type="password" placeholder="请输入当前密码"></el-input>
@@ -72,7 +78,7 @@
           <el-input v-model="passwordForm.newPassword" type="password" placeholder="请输入新密码"></el-input>
         </el-form-item>
         
-        <el-form-item label="确认新密码" prop="confirmPassword">
+        <el-form-item label="确认密码" prop="confirmPassword">
           <el-input v-model="passwordForm.confirmPassword" type="password" placeholder="请再次输入新密码"></el-input>
         </el-form-item>
       </el-form>
@@ -92,14 +98,10 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import axios from 'axios'
+import { userAPI } from '../api/user'
+import InterviewStatistics from '../components/statistics/InterviewStatistics.vue'
 
 const userInfo = ref({})
-const stats = ref({
-  interview_count: 0,
-  average_score: 0,
-  highest_score: 0
-})
 const loading = ref(true)
 const updating = ref(false)
 
@@ -129,7 +131,6 @@ const editRules = {
     { min: 3, max: 20, message: '长度在 3 到 20 个字符', trigger: 'blur' }
   ],
   email: [
-    { required: true, message: '请输入邮箱地址', trigger: 'blur' },
     { type: 'email', message: '请输入正确的邮箱地址', trigger: 'blur' }
   ]
 }
@@ -176,26 +177,16 @@ const formatDate = (dateString) => {
 const fetchUserInfo = async () => {
   loading.value = true
   try {
-    const response = await axios.get('/api/users/me')
-    userInfo.value = response.data
+    const result = await userAPI.getMe()
+    userInfo.value = result
     // 填充编辑表单
-    editForm.username = response.data.username
-    editForm.email = response.data.email
+    editForm.username = result.username
+    editForm.email = result.email
   } catch (error) {
     console.error('获取用户信息失败:', error)
     ElMessage.error('获取用户信息失败，请稍后重试')
   } finally {
     loading.value = false
-  }
-}
-
-// 获取用户统计信息
-const fetchUserStats = async () => {
-  try {
-    const response = await axios.get('/api/users/stats')
-    stats.value = response.data
-  } catch (error) {
-    console.error('获取统计信息失败:', error)
   }
 }
 
@@ -222,12 +213,12 @@ const updateUserInfo = async () => {
     if (valid) {
       updating.value = true
       try {
-        const response = await axios.put('/api/users/me', {
+        const result = await userAPI.updateProfile({
           username: editForm.username,
           email: editForm.email
         })
         
-        userInfo.value = response.data
+        userInfo.value = result
         ElMessage.success('个人信息更新成功')
         editDialogVisible.value = false
       } catch (error) {
@@ -248,7 +239,7 @@ const updatePassword = async () => {
     if (valid) {
       updating.value = true
       try {
-        await axios.put('/api/users/password', {
+        await userAPI.changePassword({
           current_password: passwordForm.currentPassword,
           new_password: passwordForm.newPassword
         })
@@ -267,17 +258,38 @@ const updatePassword = async () => {
 
 onMounted(() => {
   fetchUserInfo()
-  fetchUserStats()
 })
 </script>
 
 <style scoped>
 .user-container {
   padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.page-title {
+  margin-bottom: 24px;
+  font-size: 24px;
+  font-weight: 500;
+  color: var(--text-primary);
+  position: relative;
+  padding-left: 16px;
+}
+
+.page-title::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 10%;
+  width: 4px;
+  height: 80%;
+  background-color: var(--primary-color);
+  border-radius: 2px;
 }
 
 .user-card {
-  width: 100%;
+  margin-bottom: 24px;
 }
 
 .card-header {
@@ -286,18 +298,67 @@ onMounted(() => {
   align-items: center;
 }
 
+.card-header h3 {
+  margin: 0;
+  font-size: 18px;
+  color: var(--text-primary);
+}
+
 .loading-container {
   padding: 20px 0;
 }
 
-.action-buttons {
-  margin: 20px 0;
+.user-info {
   display: flex;
-  justify-content: center;
-  gap: 20px;
+  flex-direction: column;
+  align-items: center;
 }
 
-.el-statistic {
+.user-avatar {
+  margin-bottom: 16px;
+}
+
+.user-details {
   text-align: center;
+  margin-bottom: 20px;
+  width: 100%;
+}
+
+.user-name {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.user-email {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.user-since {
+  font-size: 12px;
+  color: var(--text-disabled);
+}
+
+.user-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+  width: 100%;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+@media (max-width: 768px) {
+  .el-row {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
 }
 </style>

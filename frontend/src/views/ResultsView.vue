@@ -110,7 +110,7 @@ const fetchInterviews = async () => {
 
 // 查看报告
 const viewReport = (id) => {
-  router.push(`/report/${id}`)
+  router.push(`/interview-report/${id}`)
 }
 
 // 处理页码变化

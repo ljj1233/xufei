@@ -6,7 +6,8 @@
           <div class="header-content">
             <div class="logo">
               <router-link to="/">
-                <h1>多模态面试评测智能体</h1>
+                <img src="./assets/logo.svg" alt="Logo" class="logo-image" />
+                <h1>多模态面试评测系统</h1>
               </router-link>
             </div>
             <div class="nav-menu" v-if="userStore.isLoggedIn">
@@ -14,32 +15,35 @@
                 :default-active="activeIndex"
                 mode="horizontal"
                 router
-                background-color="#545c64"
-                text-color="#fff"
-                active-text-color="#ffd04b"
                 class="main-menu"
               >
                 <el-menu-item index="/">首页</el-menu-item>
                 <el-menu-item index="/upload">上传面试</el-menu-item>
-                <el-menu-item index="/results">面试结果</el-menu-item>
                 <el-menu-item index="/interview-practice">模拟面试</el-menu-item>
                 <el-menu-item index="/practice-history">练习记录</el-menu-item>
                 <el-menu-item index="/user">个人中心</el-menu-item>
                 <el-menu-item v-if="userStore.isAdmin" index="/admin">管理控制台</el-menu-item>
-                <el-menu-item @click="logout">退出登录</el-menu-item>
               </el-menu>
             </div>
             <div class="user-actions">
               <template v-if="userStore.isLoggedIn">
                 <el-dropdown>
                   <span class="user-dropdown">
+                    <el-avatar :size="32" :src="avatarUrl" />
                     {{ userStore.username }}
                     <el-icon><arrow-down /></el-icon>
                   </span>
                   <template #dropdown>
                     <el-dropdown-menu>
-                      <el-dropdown-item @click="router.push('/user')">个人中心</el-dropdown-item>
-                      <el-dropdown-item @click="logout">退出登录</el-dropdown-item>
+                      <el-dropdown-item @click="router.push('/user')">
+                        <el-icon><UserFilled /></el-icon> 个人中心
+                      </el-dropdown-item>
+                      <el-dropdown-item @click="router.push('/interview-practice')">
+                        <el-icon><VideoCameraFilled /></el-icon> 开始面试
+                      </el-dropdown-item>
+                      <el-dropdown-item divided @click="logout">
+                        <el-icon><SwitchButton /></el-icon> 退出登录
+                      </el-dropdown-item>
                     </el-dropdown-menu>
                   </template>
                 </el-dropdown>
@@ -56,7 +60,13 @@
         </el-main>
         <el-footer height="60px">
           <div class="footer-content">
-            <p>© {{ new Date().getFullYear() }} 多模态面试评测智能体 - 基于Vue.js和Element Plus构建</p>
+            <div class="footer-links">
+              <a href="#">隐私政策</a>
+              <a href="#">使用条款</a>
+              <a href="#">帮助中心</a>
+              <a href="#">联系我们</a>
+            </div>
+            <p>© {{ new Date().getFullYear() }} 多模态面试评测系统 - 企业级面试训练与评估平台</p>
           </div>
         </el-footer>
       </el-container>
@@ -68,13 +78,16 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from './stores/user'
-import { ArrowDown } from '@element-plus/icons-vue'
+import { ArrowDown, UserFilled, VideoCameraFilled, SwitchButton } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 
 const router = useRouter()
 const userStore = useUserStore()
 const route = useRoute()
+
+// 默认头像URL
+const avatarUrl = ref('https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png')
 
 // 计算当前激活的导航项
 const activeIndex = computed(() => route.path)
@@ -83,12 +96,29 @@ const activeIndex = computed(() => route.path)
 const logout = () => {
   userStore.logout()
   ElMessage.success('退出登录成功')
-  router.push('/')
+  router.push('/login')
 }
 
 // 组件挂载时检查登录状态
 onMounted(async () => {
-  await userStore.checkLoginStatus()
+  try {
+    console.log('检查登录状态...')
+    const result = await userStore.checkLoginStatus()
+    console.log('登录状态检查结果:', result.success ? '已登录' : '未登录')
+    
+    // 如果当前路由需要认证但未登录，重定向到登录页
+    if (!result.success && route.meta.requiresAuth) {
+      console.log('需要登录，重定向到登录页')
+      router.push('/login')
+    }
+  } catch (error) {
+    console.error('检查登录状态出错:', error)
+    // 发生错误时清除登录状态
+    userStore.logout()
+    if (route.meta.requiresAuth) {
+      router.push('/login')
+    }
+  }
 })
 </script>
 
@@ -104,8 +134,8 @@ onMounted(async () => {
 }
 
 .el-header {
-  background-color: #ffffff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background-color: var(--bg-primary);
+  box-shadow: var(--box-shadow-light);
   position: sticky;
   top: 0;
   z-index: 1000;
@@ -116,17 +146,33 @@ onMounted(async () => {
   justify-content: space-between;
   align-items: center;
   height: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
 }
 
 .logo h1 {
   margin: 0;
-  font-size: 1.5rem;
-  color: #1E88E5;
+  font-size: 1.2rem;
+  color: var(--primary-color);
+  font-weight: 500;
+}
+
+.logo-image {
+  height: 32px;
+  margin-right: 10px;
 }
 
 .logo a {
   text-decoration: none;
   color: inherit;
+  display: flex;
+  align-items: center;
 }
 
 .nav-menu {
@@ -134,9 +180,26 @@ onMounted(async () => {
   margin: 0 20px;
 }
 
+/* 企业风格导航菜单 */
+.main-menu.el-menu--horizontal {
+  border-bottom: none;
+}
+
+.main-menu.el-menu--horizontal .el-menu-item {
+  font-size: 14px;
+  height: 60px;
+  line-height: 60px;
+  border-bottom: 2px solid transparent;
+}
+
+.main-menu.el-menu--horizontal .el-menu-item.is-active {
+  color: var(--primary-color);
+  border-bottom: 2px solid var(--primary-color);
+}
+
 .user-actions {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   align-items: center;
 }
 
@@ -144,40 +207,71 @@ onMounted(async () => {
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: var(--border-radius-base);
+  transition: background-color 0.2s;
+  user-select: none;
+}
+
+.user-dropdown:hover {
+  background-color: var(--bg-secondary);
 }
 
 .el-main {
   padding: 20px;
-  background-color: #f5f7fa;
+  background-color: var(--bg-secondary);
 }
 
 .el-footer {
-  background-color: #ffffff;
-  border-top: 1px solid #e6e6e6;
+  background-color: var(--bg-primary);
+  border-top: 1px solid var(--border-light);
 }
 
 .footer-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   height: 100%;
-  color: #606266;
+  color: var(--text-secondary);
 }
 
-.main-menu {
-  margin-bottom: 20px;
+.footer-links {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 8px;
 }
 
-.main-content {
-  flex: 1;
-  padding: 0 20px;
+.footer-links a {
+  color: var(--primary-color);
+  text-decoration: none;
+  font-size: 14px;
 }
 
-.app-footer {
-  background-color: #f5f5f5;
-  padding: 20px;
-  text-align: center;
-  margin-top: 30px;
+.footer-links a:hover {
+  text-decoration: underline;
+}
+
+.footer-content p {
+  margin: 0;
+  font-size: 12px;
+}
+
+@media (max-width: 768px) {
+  .nav-menu {
+    display: none;
+  }
+  
+  .header-content {
+    padding: 0 10px;
+  }
+  
+  .logo h1 {
+    font-size: 1rem;
+  }
 }
 </style>

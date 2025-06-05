@@ -47,7 +47,11 @@ export const userAPI = {
     formData.append('username', userData.username)
     formData.append('password', userData.password)
     
-    const response = await axios.post(`${API_URL}/users/login`, formData)
+    const response = await api.post('/users/login', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
     return response.data
   },
   

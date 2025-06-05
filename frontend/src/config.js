@@ -16,6 +16,5 @@ export const CONFIG = {
   uploadMaxSize: 500 * 1024 * 1024, // 500MB
   
   // 开发模式配置
-  isDevelopment: import.meta.env.DEV,
-  isTestMode: import.meta.env.VITE_APP_MODE === 'test'
+  isDevelopment: import.meta.env.DEV
 }; 

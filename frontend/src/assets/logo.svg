@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 背景圆 -->
+  <circle cx="100" cy="100" r="90" fill="#003366" />
+  
+  <!-- 声波图形 -->
+  <path d="M45 100C45 95 50 85 65 85C80 85 75 115 90 115C105 115 100 85 115 85C130 85 125 115 140 115C155 115 150 85 165 85" stroke="#1890FF" stroke-width="6" stroke-linecap="round" />
+  
+  <!-- 更生动的面试官 -->
+  <g id="interviewer">
+    <!-- 头部 -->
+    <circle cx="65" cy="60" r="16" fill="#FFFFFF" />
+    <!-- 头发 -->
+    <path d="M49 50C49 50 53 42 65 42C77 42 81 50 81 50" stroke="#333333" stroke-width="4" stroke-linecap="round" />
+    <!-- 眼睛 -->
+    <circle cx="60" cy="58" r="2.5" fill="#333333" />
+    <circle cx="70" cy="58" r="2.5" fill="#333333" />
+    <!-- 微笑的嘴巴 -->
+    <path d="M58 68C62 72 68 72 72 68" stroke="#333333" stroke-width="2" stroke-linecap="round" />
+    <!-- 领带 -->
+    <path d="M65 76L60 90L65 105L70 90L65 76" fill="#1890FF" />
+    <!-- 西装 -->
+    <path d="M45 115V85C45 78 55 76 65 76C75 76 85 78 85 85V115" fill="#002855" />
+    <path d="M45 115V85C45 78 55 76 65 76C75 76 85 78 85 85V115" stroke="#FFFFFF" stroke-width="1" />
+  </g>
+  
+  <!-- 更生动的面试者 -->
+  <g id="interviewee">
+    <!-- 头部 -->
+    <circle cx="135" cy="60" r="16" fill="#FFFFFF" />
+    <!-- 头发 -->
+    <path d="M119 48C119 48 126 38 135 38C144 38 151 48 151 48" stroke="#333333" stroke-width="4" stroke-linecap="round" />
+    <!-- 眼睛 -->
+    <circle cx="130" cy="58" r="2.5" fill="#333333" />
+    <circle cx="140" cy="58" r="2.5" fill="#333333" />
+    <!-- 紧张的嘴巴 -->
+    <path d="M128 68C132 65 138 65 142 68" stroke="#333333" stroke-width="2" stroke-linecap="round" />
+    <!-- 衬衫 -->
+    <path d="M115 115V85C115 78 125 76 135 76C145 76 155 78 155 85V115" fill="#E6F3FF" />
+    <path d="M115 115V85C115 78 125 76 135 76C145 76 155 78 155 85V115" stroke="#003366" stroke-width="1.5" />
+    <!-- 领结 -->
+    <path d="M130 80H140" stroke="#1890FF" stroke-width="3" stroke-linecap="round" />
+  </g>
+  
+  <!-- 面试标志-对话气泡 -->
+  <g id="interview-bubbles">
+    <circle cx="90" cy="40" r="8" fill="#FFFFFF" opacity="0.9" />
+    <circle cx="100" cy="30" r="6" fill="#FFFFFF" opacity="0.7" />
+    <circle cx="110" cy="25" r="4" fill="#FFFFFF" opacity="0.5" />
+  </g>
+</svg> 

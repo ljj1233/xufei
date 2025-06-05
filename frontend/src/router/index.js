@@ -37,8 +37,10 @@ const router = createRouter({
     {
       path: '/report/:id',
       name: 'report',
-      component: () => import('../views/ReportView.vue'),
-      meta: { requiresAuth: true }
+      redirect: to => {
+        // 重定向到interview-report路由
+        return { path: `/interview-report/${to.params.id}` }
+      }
     },
     {
       path: '/user',
@@ -83,21 +85,15 @@ const router = createRouter({
 // 导航守卫
 router.beforeEach((to, from, next) => {
   const userStore = useUserStore()
-  // 读取全局模式配置（测试/上线）
-  const mode = import.meta.env.VITE_APP_MODE || 'production' // 通过环境变量读取模式
-  if (mode === 'test') {
-    // 测试模式下，所有页面均可访问，无需登录
-    next()
+  
+  // 根据权限控制路由访问
+  if (to.meta.requiresAuth && !userStore.isLoggedIn) {
+    next({ name: 'login' })
+  } else if (to.meta.requiresAdmin && !userStore.isAdmin) {
+    // 管理员权限检查
+    next({ name: 'home' })
   } else {
-    // 上线模式，按原有权限控制
-    if (to.meta.requiresAuth && !userStore.isLoggedIn) {
-      next({ name: 'login' })
-    } else if (to.meta.requiresAdmin && !userStore.isAdmin) {
-      // 管理员权限检查
-      next({ name: 'home' })
-    } else {
-      next()
-    }
+    next()
   }
 })
 

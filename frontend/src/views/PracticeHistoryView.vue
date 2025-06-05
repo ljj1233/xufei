@@ -1,6 +1,17 @@
 <template>
   <div class="practice-history-container">
-    <h1>模拟面试练习记录</h1>
+    <h1>我的练习记录</h1>
+    
+    <!-- 开发环境提示 -->
+    <el-alert
+      v-if="isDevelopment"
+      type="info"
+      :closable="false"
+      show-icon
+      title="开发环境提示"
+      description="当前处于开发环境，可能显示模拟数据。生产环境将显示实际用户数据。"
+      class="env-notice"
+    />
     
     <div class="filter-section">
       <el-input
@@ -23,6 +34,31 @@
       <el-button type="primary" @click="filterRecords">筛选</el-button>
     </div>
     
+    <el-card class="stat-card" v-if="!isLoading && practiceRecords.length > 0">
+      <div class="stats-header">
+        <h3>练习统计</h3>
+      </div>
+      <div class="stats-content">
+        <div class="stat-item">
+          <div class="stat-value">{{ totalRecords }}</div>
+          <div class="stat-label">总练习次数</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value">{{ practiceRecords.length > 0 ? Math.round(practiceRecords.reduce((sum, record) => sum + (record.duration || 0), 0) / 60 / practiceRecords.length) : 0 }}</div>
+          <div class="stat-label">平均时长(分钟)</div>
+        </div>
+        <div class="stat-item" v-if="practiceRecords.some(r => r.overallScore && r.overallScore !== '未评分')">
+          <div class="stat-value">{{ 
+            practiceRecords
+              .filter(r => r.overallScore && r.overallScore !== '未评分')
+              .reduce((max, r) => Math.max(max, parseFloat(r.overallScore)), 0)
+              .toFixed(1) 
+          }}</div>
+          <div class="stat-label">最高分数</div>
+        </div>
+      </div>
+    </el-card>
+    
     <el-table
       v-loading="isLoading"
       :data="filteredPracticeRecords"
@@ -35,7 +71,7 @@
       <el-table-column prop="sessionName" label="练习名称" min-width="180">
         <template #default="{ row }">
           <span class="practice-name">{{ row.sessionName || '未命名练习' }}</span>
-          <el-tag size="small" :type="getPositionTagType(row.position)" effect="light">{{ row.position }}</el-tag>
+          <el-tag size="small" :type="getPositionTagType(row.position)" effect="light">{{ getPositionDisplay(row.position) }}</el-tag>
         </template>
       </el-table-column>
       <el-table-column prop="createdAt" label="练习时间" width="180" sortable>
@@ -54,16 +90,35 @@
           <span :class="getScoreClass(row.overallScore)">{{ row.overallScore }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="220" align="center" fixed="right">
+      <el-table-column label="操作" min-width="240" align="center" fixed="right">
         <template #default="{ row }">
-          <el-button type="primary" size="small" @click="viewReport(row.id)">查看报告</el-button>
-          <el-button type="info" size="small" @click="viewRecording(row.id)">查看录像</el-button>
-          <el-button type="danger" size="small" @click="confirmDelete(row.id)">删除</el-button>
+          <div class="button-group">
+            <el-button type="primary" size="small" @click="viewReport(row.id)">
+              <el-icon><Document /></el-icon> 
+              查看报告
+            </el-button>
+            <el-button type="info" size="small" @click="viewRecording(row.id)">
+              <el-icon><VideoPlay /></el-icon>
+              查看录像
+            </el-button>
+            <el-button type="danger" size="small" @click="confirmDelete(row.id)">
+              <el-icon><Delete /></el-icon>
+              删除
+            </el-button>
+          </div>
         </template>
       </el-table-column>
     </el-table>
 
-    <div class="pagination-container">
+    <!-- 没有记录时的提示 -->
+    <el-empty 
+      v-if="!isLoading && filteredPracticeRecords.length === 0"
+      description="暂无练习记录"
+    >
+      <el-button type="primary" @click="router.push('/interview-practice')">开始练习</el-button>
+    </el-empty>
+
+    <div class="pagination-container" v-if="totalRecords > pageSize">
       <el-pagination
         v-model:current-page="currentPage"
         v-model:page-size="pageSize"
@@ -91,9 +146,13 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search } from '@element-plus/icons-vue'
+import { Search, Document, VideoPlay, Delete } from '@element-plus/icons-vue'
+import { interviewSessionAPI } from '../api/interviewSession'
+import { useUserStore } from '../stores/user'
+import { CONFIG } from '../config'
 
 const router = useRouter()
+const userStore = useUserStore()
 const practiceRecords = ref([])
 const isLoading = ref(true)
 const currentPage = ref(1)
@@ -103,41 +162,144 @@ const searchKeyword = ref('')
 const dateRange = ref([])
 const deleteDialogVisible = ref(false)
 const recordToDelete = ref(null)
+const isDevelopment = CONFIG.isDevelopment
 
-// 模拟数据 - 实际项目中应从API获取
+// 获取用户个人练习记录
 onMounted(async () => {
+  await fetchPracticeRecords()
+})
+
+// 获取个人练习记录
+const fetchPracticeRecords = async () => {
   try {
-    // 模拟API加载延迟
-    setTimeout(() => {
-      // 模拟获取练习记录数据
-      const mockRecords = Array.from({ length: 25 }, (_, i) => {
-        const date = new Date()
-        date.setDate(date.getDate() - Math.floor(Math.random() * 30))
-        
-        const positions = ['前端开发', '后端开发', '全栈开发', '产品经理', '数据分析师', 'UI设计师']
-        const position = positions[Math.floor(Math.random() * positions.length)]
-        
-        return {
-          id: `practice-${i + 1}`,
-          sessionName: `模拟面试练习 ${i + 1}`,
-          position,
-          createdAt: date.toISOString(),
-          duration: Math.floor(Math.random() * 40 + 10) * 60, // 10-50分钟的随机时长（秒）
-          questionCount: Math.floor(Math.random() * 10 + 5), // 5-15题
-          overallScore: (Math.random() * 3 + 7).toFixed(1), // 7.0-10.0的随机分数
-        }
-      })
+    isLoading.value = true
+    console.log('开始获取面试记录...')
+    
+    // 调用API获取用户个人练习记录
+    const response = await interviewSessionAPI.getSessions({
+      page: currentPage.value,
+      limit: pageSize.value
+    })
+    
+    console.log('API返回数据:', response)
+    
+    // 清空备用数据，确保使用API返回的数据
+    practiceRecords.value = []
+    
+    // 处理API返回数据
+    if (response && response.items && response.items.length > 0) {
+      practiceRecords.value = response.items.map(item => ({
+        id: item.id,
+        sessionName: item.title || item.name || `模拟面试 ${item.id}`,
+        position: item.position || item.job_position || '未指定职位',
+        createdAt: item.created_at || item.createdAt || item.create_time,
+        duration: item.duration || 0,
+        questionCount: getQuestionCount(item),
+        overallScore: getOverallScore(item)
+      }))
       
-      practiceRecords.value = mockRecords
-      totalRecords.value = mockRecords.length
-      isLoading.value = false
-    }, 1000)
+      totalRecords.value = response.total || response.items.length
+    } else {
+      console.warn('API返回数据为空')
+      ElMessage.warning('未找到练习记录')
+      practiceRecords.value = []
+      totalRecords.value = 0
+    }
+    
+    isLoading.value = false
   } catch (error) {
-    ElMessage.error('获取练习记录失败')
-    console.error(error)
+    console.error('获取练习记录失败:', error)
+    ElMessage.error('获取练习记录失败，请稍后重试')
+    
+    // 仅在开发环境使用示例数据
+    if (import.meta.env.DEV) {
+      console.warn('开发环境下使用示例数据')
+      useDemoData()
+    } else {
+      practiceRecords.value = []
+      totalRecords.value = 0
+    }
+    
     isLoading.value = false
   }
-})
+}
+
+// 获取问题数量
+const getQuestionCount = (item) => {
+  if (item.questions && Array.isArray(item.questions)) {
+    return item.questions.length
+  }
+  if (item.questionCount !== undefined) return item.questionCount
+  if (item.question_count !== undefined) return item.question_count
+  return 0
+}
+
+// 获取总分
+const getOverallScore = (item) => {
+  if (item.overall_score !== undefined) {
+    return parseFloat(item.overall_score).toFixed(1)
+  }
+  if (item.overallScore !== undefined) {
+    return parseFloat(item.overallScore).toFixed(1)
+  }
+  if (item.score !== undefined) {
+    return parseFloat(item.score).toFixed(1)
+  }
+  return '未评分'
+}
+
+// 获取职位显示文本
+const getPositionDisplay = (position) => {
+  if (!position) return '未指定职位'
+  
+  if (typeof position === 'object' && position !== null) {
+    return position.title || position.name || JSON.stringify(position)
+  }
+  
+  return position
+}
+
+// 示例数据（仅当API不可用时在开发环境中使用）
+const useDemoData = () => {
+  // 使用当前日期作为基准，避免未来日期
+  const mockRecords = Array.from({ length: 5 }, (_, i) => {
+    const date = new Date()
+    date.setDate(date.getDate() - (i * 2 + 1)) // 确保所有日期都是过去的
+    
+    const positions = ['前端开发', '后端开发', '全栈开发', '产品经理', '数据分析师']
+    const position = positions[i % positions.length]
+    
+    return {
+      id: `demo-session-${i + 1}`, // 添加demo-前缀便于识别
+      sessionName: `测试练习 ${i + 1} (示例数据)`, // 明确标记为示例数据
+      position,
+      createdAt: date.toISOString(),
+      duration: Math.floor(Math.random() * 40 + 10) * 60,
+      questionCount: Math.floor(Math.random() * 10 + 5),
+      overallScore: (Math.random() * 3 + 7).toFixed(1),
+    }
+  })
+  
+  practiceRecords.value = mockRecords
+  totalRecords.value = mockRecords.length
+}
+
+// 应用筛选
+const filterRecords = async () => {
+  currentPage.value = 1 // 重置到第一页
+  await fetchPracticeRecords()
+}
+
+// 分页处理
+const handleSizeChange = async (size) => {
+  pageSize.value = size
+  await fetchPracticeRecords()
+}
+
+const handleCurrentChange = async (page) => {
+  currentPage.value = page
+  await fetchPracticeRecords()
+}
 
 // 根据筛选条件过滤记录
 const filteredPracticeRecords = computed(() => {
@@ -147,8 +309,8 @@ const filteredPracticeRecords = computed(() => {
   if (searchKeyword.value) {
     const keyword = searchKeyword.value.toLowerCase()
     result = result.filter(record => 
-      record.sessionName.toLowerCase().includes(keyword) || 
-      record.position.toLowerCase().includes(keyword)
+      (record.sessionName && record.sessionName.toLowerCase().includes(keyword)) || 
+      (record.position && record.position.toLowerCase().includes(keyword))
     )
   }
   
@@ -161,6 +323,7 @@ const filteredPracticeRecords = computed(() => {
     endDate.setHours(23, 59, 59, 999)
     
     result = result.filter(record => {
+      if (!record.createdAt) return false
       const recordDate = new Date(record.createdAt)
       return recordDate >= startDate && recordDate <= endDate
     })
@@ -168,20 +331,6 @@ const filteredPracticeRecords = computed(() => {
   
   return result
 })
-
-// 应用筛选
-const filterRecords = () => {
-  currentPage.value = 1 // 重置到第一页
-}
-
-// 分页处理
-const handleSizeChange = (size) => {
-  pageSize.value = size
-}
-
-const handleCurrentChange = (page) => {
-  currentPage.value = page
-}
 
 // 查看报告详情
 const viewReport = (id) => {
@@ -203,20 +352,27 @@ const confirmDelete = (id) => {
 }
 
 // 删除练习记录
-const deletePractice = () => {
+const deletePractice = async () => {
   if (!recordToDelete.value) return
   
-  // 模拟删除操作
-  practiceRecords.value = practiceRecords.value.filter(record => record.id !== recordToDelete.value)
-  totalRecords.value = practiceRecords.value.length
-  
-  ElMessage({
-    type: 'success',
-    message: '删除成功'
-  })
-  
-  deleteDialogVisible.value = false
-  recordToDelete.value = null
+  try {
+    // 调用API删除面试记录
+    await interviewSessionAPI.deleteSession(recordToDelete.value)
+    
+    // 删除成功后更新列表
+    await fetchPracticeRecords()
+    
+    ElMessage({
+      type: 'success',
+      message: '删除成功'
+    })
+  } catch (error) {
+    console.error('删除练习记录失败:', error)
+    ElMessage.error('删除失败，请稍后重试')
+  } finally {
+    deleteDialogVisible.value = false
+    recordToDelete.value = null
+  }
 }
 
 // 格式化日期
@@ -232,15 +388,23 @@ const formatDuration = (seconds) => {
   return `${minutes}分${remainingSeconds}秒`
 }
 
-// 获取职位标签样式
+// 根据职位标签样式
 const getPositionTagType = (position) => {
+  // 如果position是对象，提取title字段
+  if (typeof position === 'object' && position !== null && position.title) {
+    position = position.title
+  }
+
   const positionMap = {
     '前端开发': 'success',
     '后端开发': 'info',
     '全栈开发': 'warning',
     '产品经理': 'danger',
     '数据分析师': 'primary',
-    'UI设计师': ''
+    'UI设计师': '',
+    '前端工程师': 'success',
+    '后端工程师': 'info',
+    '全栈工程师': 'warning'
   }
   return positionMap[position] || ''
 }
@@ -307,5 +471,87 @@ const getScoreClass = (score) => {
 
 .score.below {
   color: #F56C6C;
+}
+
+.stat-card {
+  margin-bottom: 20px;
+}
+
+.stats-header {
+  margin-bottom: 15px;
+}
+
+.stats-header h3 {
+  font-size: 18px;
+  margin: 0;
+  color: var(--primary-color);
+}
+
+.stats-content {
+  display: flex;
+  justify-content: space-around;
+  flex-wrap: wrap;
+}
+
+.stat-item {
+  text-align: center;
+  padding: 15px;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: bold;
+  color: var(--primary-color);
+  margin-bottom: 5px;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.button-group {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.button-group .el-button {
+  min-width: 72px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.button-group .el-icon {
+  margin-right: 4px;
+}
+
+.env-notice {
+  margin-bottom: 20px;
+}
+
+@media (max-width: 768px) {
+  .button-group {
+    flex-direction: column;
+    gap: 5px;
+  }
+  
+  .button-group .el-button {
+    margin-left: 0 !important;
+    width: 100%;
+  }
+  
+  .filter-section {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .search-input,
+  .date-picker {
+    width: 100%;
+    margin-bottom: 10px;
+  }
 }
 </style> 

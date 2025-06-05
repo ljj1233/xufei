@@ -72,6 +72,7 @@ export const useUserStore = defineStore('user', () => {
   // 获取用户信息
   const getUserInfo = async () => {
     try {
+      console.log('获取用户信息...')
       const response = await userAPI.getMe()
       username.value = response.username
       userId.value = response.id
@@ -79,12 +80,22 @@ export const useUserStore = defineStore('user', () => {
       localStorage.setItem('username', username.value)
       localStorage.setItem('user_id', userId.value)
       localStorage.setItem('user_is_admin', userIsAdmin.value.toString())
+      console.log('用户信息获取成功:', username.value)
       return { success: true, data: response }
     } catch (error) {
-      if (error.response?.status === 401) {
-        // 如果认证失败，清除登录状态
+      console.error('获取用户信息失败:', error.message || '未知错误')
+      
+      // 如果是网络错误或后端不可用
+      if (!error.response || error.code === 'ECONNABORTED') {
+        console.error('后端服务不可用，清除登录状态')
         logout()
       }
+      // 如果是认证失败
+      else if (error.response?.status === 401) {
+        console.warn('认证失败，清除登录状态')
+        logout()
+      }
+      
       return { 
         success: false, 
         message: error.response?.data?.detail || '获取用户信息失败'
@@ -94,19 +105,19 @@ export const useUserStore = defineStore('user', () => {
   
   // 检查登录状态
   const checkLoginStatus = async () => {
-    const mode = import.meta.env.VITE_APP_MODE || 'production'
-    if (mode === 'test' && !token.value) {
-      // 测试模式下自动登录
-      token.value = DEFAULT_TEST_USER.token
-      username.value = DEFAULT_TEST_USER.username
-      userId.value = DEFAULT_TEST_USER.id
-      localStorage.setItem('user_token', token.value)
-      localStorage.setItem('username', username.value)
-      localStorage.setItem('user_id', userId.value)
-      return { success: true }
-    } else if (token.value) {
-      await getUserInfo()
+    // 仅当存在token时才尝试获取用户信息
+    if (token.value) {
+      try {
+        await getUserInfo()
+        return { success: true }
+      } catch (error) {
+        console.error('检查登录状态失败:', error)
+        // 如果获取用户信息失败，清除登录状态
+        logout()
+        return { success: false }
+      }
     }
+    return { success: false }
   }
   
   // 退出登录

@@ -112,32 +112,40 @@
           <div class="step-item">
             <div class="step-number">1</div>
             <div class="step-icon">
-              <el-icon><Upload /></el-icon>
+              <el-icon><Select /></el-icon>
             </div>
-            <h4>上传面试</h4>
-            <p>上传您的面试视频或音频文件</p>
+            <h4>选择面试类型</h4>
+            <p>根据您的求职目标，选择合适的面试类型和岗位</p>
           </div>
+          
           <div class="step-arrow">
-            <el-icon><ArrowRight /></el-icon>
+            <svg width="50" height="50" viewBox="0 0 100 100">
+              <path d="M30 50 L70 50 M60 30 L80 50 L60 70" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
           </div>
+          
           <div class="step-item">
             <div class="step-number">2</div>
             <div class="step-icon">
-              <el-icon><Loading /></el-icon>
+              <el-icon><Mic /></el-icon>
             </div>
-            <h4>AI分析</h4>
-            <p>系统对您的面试进行多维度分析</p>
+            <h4>开始面试对话</h4>
+            <p>与我们的AI面试官进行自然对话，回答面试问题</p>
           </div>
+          
           <div class="step-arrow">
-            <el-icon><ArrowRight /></el-icon>
+            <svg width="50" height="50" viewBox="0 0 100 100">
+              <path d="M30 50 L70 50 M60 30 L80 50 L60 70" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
           </div>
+          
           <div class="step-item">
             <div class="step-number">3</div>
             <div class="step-icon">
-              <el-icon><DocumentChecked /></el-icon>
+              <el-icon><DataAnalysis /></el-icon>
             </div>
-            <h4>查看报告</h4>
-            <p>获取详细评估报告和改进建议</p>
+            <h4>获取详细评估</h4>
+            <p>接收专业评估报告，了解优势和改进空间</p>
           </div>
         </div>
       </el-col>
@@ -224,7 +232,7 @@
 <script setup>
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
-import { VideoCamera, DataAnalysis, Document, Upload, Loading, DocumentChecked, ArrowRight } from '@element-plus/icons-vue'
+import { VideoCamera, DataAnalysis, Document, Upload, Loading, DocumentChecked, ArrowRight, Select, Mic } from '@element-plus/icons-vue'
 import EmotionIcons from '../components/EmotionIcons.vue'
 
 const router = useRouter()
@@ -242,7 +250,7 @@ const userStore = useUserStore()
   display: flex;
   align-items: center;
   padding: 60px 20px;
-  background-color: #f0f8ff;
+  background-color: var(--bg-primary);
   border-radius: 12px;
   margin-bottom: 40px;
   position: relative;
@@ -324,7 +332,7 @@ const userStore = useUserStore()
 }
 
 .quote-box {
-  background-color: #ecf5ff;
+  background-color: var(--bg-tertiary);
   padding: 30px;
   border-radius: 8px;
   position: relative;
@@ -404,10 +412,12 @@ const userStore = useUserStore()
 
 .steps-container {
   display: flex;
-  justify-content: space-around;
+  justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  padding: 20px 0;
+  padding: 40px 0;
+  max-width: 1000px;
+  margin: 0 auto;
 }
 
 .step-item {
@@ -415,53 +425,76 @@ const userStore = useUserStore()
   flex-direction: column;
   align-items: center;
   text-align: center;
-  width: 200px;
+  width: 260px;
   position: relative;
+  padding: 30px 20px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--border-radius-base);
+  box-shadow: var(--box-shadow-light);
+  background-color: var(--bg-primary);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.step-item:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--box-shadow);
 }
 
 .step-number {
   position: absolute;
-  top: -10px;
-  left: -10px;
-  width: 30px;
-  height: 30px;
-  background-color: #1E88E5;
+  top: -18px;
+  left: -18px;
+  width: 36px;
+  height: 36px;
+  background-color: var(--primary-color);
   color: white;
   border-radius: 50%;
   display: flex;
   justify-content: center;
   align-items: center;
   font-weight: bold;
+  z-index: 2;
+  font-size: 18px;
 }
 
 .step-icon {
-  width: 80px;
-  height: 80px;
-  background-color: #ecf5ff;
+  width: 100px;
+  height: 100px;
+  background-color: var(--bg-tertiary);
   border-radius: 50%;
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-bottom: 15px;
+  margin-bottom: 20px;
+  transition: background-color 0.3s ease;
+}
+
+.step-item:hover .step-icon {
+  background-color: rgba(24, 144, 255, 0.1);
 }
 
 .step-icon .el-icon {
-  font-size: 2.5rem;
+  font-size: 3rem;
+  color: var(--primary-color);
 }
 
 .step-arrow {
-  font-size: 2rem;
-  color: #dcdfe6;
+  font-size: 2.5rem;
+  color: var(--primary-color);
+  margin: 0 -10px;
+  opacity: 0.7;
 }
 
 .step-item h4 {
-  margin: 0 0 10px;
-  color: #303133;
+  margin: 0 0 12px;
+  color: var(--primary-color);
+  font-size: 18px;
 }
 
 .step-item p {
-  color: #606266;
+  color: var(--text-secondary);
   margin: 0;
+  font-size: 15px;
 }
 
 .tab-content {
@@ -497,12 +530,12 @@ const userStore = useUserStore()
 .cta-card {
   text-align: center;
   padding: 40px;
-  background: linear-gradient(135deg, #f0f8ff 0%, #e1f5fe 100%);
+  background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-tertiary) 100%);
 }
 
 .cta-card h3 {
   font-size: 1.8rem;
-  color: #1E88E5;
+  color: var(--primary-color);
   margin-top: 0;
 }
 
