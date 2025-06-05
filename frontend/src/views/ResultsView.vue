@@ -69,7 +69,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import axios from 'axios'
+import { interviewAPI } from '../api/interview'
 
 const router = useRouter()
 const interviews = ref([])
@@ -94,14 +94,12 @@ const formatDate = (dateString) => {
 const fetchInterviews = async () => {
   loading.value = true
   try {
-    const response = await axios.get('/api/interviews', {
-      params: {
-        page: currentPage.value,
-        page_size: pageSize.value
-      }
+    const response = await interviewAPI.getInterviews({
+      page: currentPage.value,
+      page_size: pageSize.value
     })
-    interviews.value = response.data.items
-    total.value = response.data.total
+    interviews.value = response.items
+    total.value = response.total
   } catch (error) {
     console.error('获取面试列表失败:', error)
     ElMessage.error('获取面试列表失败，请稍后重试')

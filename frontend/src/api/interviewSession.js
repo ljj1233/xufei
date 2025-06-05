@@ -1,11 +1,10 @@
 import axios from 'axios'
 import { useUserStore } from '../stores/user'
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+import { API_URL } from '../config'
 
 // 创建axios实例
 const api = axios.create({
-  baseURL: `${API_BASE_URL}/api/v1`,
+  baseURL: API_URL,
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json'
@@ -141,7 +140,7 @@ export const interviewSessionAPI = {
     formData.append('timestamp', timestamp)
     
     const response = await axios.post(
-      `${API_BASE_URL}/api/v1/interview-sessions/${sessionId}/upload-audio`,
+      `${API_URL}/interview-sessions/${sessionId}/upload-audio`,
       formData,
       {
         headers: {
@@ -160,7 +159,7 @@ export const interviewSessionAPI = {
     formData.append('timestamp', timestamp)
     
     const response = await axios.post(
-      `${API_BASE_URL}/api/v1/interview-sessions/${sessionId}/upload-video`,
+      `${API_URL}/interview-sessions/${sessionId}/upload-video`,
       formData,
       {
         headers: {
@@ -189,10 +188,10 @@ export class InterviewWebSocket {
   connect() {
     try {
       const userStore = useUserStore()
-      // 使用环境变量中的API_BASE_URL，将http://替换为ws://
-      const wsProtocol = API_BASE_URL.startsWith('https') ? 'wss://' : 'ws://'
-      const wsBaseUrl = API_BASE_URL.replace(/^https?:\/\//, '')
-      const wsUrl = `${wsProtocol}${wsBaseUrl}/api/v1/interview-sessions/${this.sessionId}/ws?token=${userStore.token}`
+      // 从API_URL获取WebSocket URL
+      const wsProtocol = API_URL.startsWith('https') ? 'wss://' : 'ws://'
+      const wsBaseUrl = API_URL.replace(/^https?:\/\//, '').replace(/\/api\/v1$/, '')
+      const wsUrl = `${wsProtocol}${wsBaseUrl}${API_URL.includes('/api/v1') ? '/api/v1' : ''}/interview-sessions/${this.sessionId}/ws?token=${userStore.token}`
       
       this.ws = new WebSocket(wsUrl)
       
@@ -248,14 +247,14 @@ export class InterviewWebSocket {
     }
   }
 
-  close() {
-    if (this.ws) {
-      this.ws.close(1000, '正常关闭')
-    }
-  }
-
   getReadyState() {
     return this.ws ? this.ws.readyState : WebSocket.CLOSED
+  }
+
+  close() {
+    if (this.ws) {
+      this.ws.close()
+    }
   }
 }
 
@@ -270,18 +269,8 @@ export class AudioRecorder {
 
   async startRecording() {
     try {
-      this.stream = await navigator.mediaDevices.getUserMedia({ 
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
-        } 
-      })
-      
-      this.mediaRecorder = new MediaRecorder(this.stream, {
-        mimeType: 'audio/webm;codecs=opus'
-      })
-      
+      this.stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      this.mediaRecorder = new MediaRecorder(this.stream)
       this.audioChunks = []
       
       this.mediaRecorder.ondataavailable = (event) => {
@@ -290,13 +279,16 @@ export class AudioRecorder {
         }
       }
       
-      this.mediaRecorder.start(1000) // 每秒收集一次数据
-      this.isRecording = true
+      this.mediaRecorder.onstop = () => {
+        this.isRecording = false
+      }
       
+      this.mediaRecorder.start(1000) // 每秒触发一次dataavailable事件
+      this.isRecording = true
       return true
     } catch (error) {
-      console.error('启动录音失败:', error)
-      throw error
+      console.error('启动音频录制失败:', error)
+      return false
     }
   }
 
@@ -304,17 +296,16 @@ export class AudioRecorder {
     return new Promise((resolve) => {
       if (this.mediaRecorder && this.isRecording) {
         this.mediaRecorder.onstop = () => {
-          const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' })
+          const blob = new Blob(this.audioChunks, { type: 'audio/webm' })
           this.isRecording = false
           
           // 停止所有音频轨道
           if (this.stream) {
-            this.stream.getTracks().forEach(track => track.stop())
+            this.stream.getAudioTracks().forEach(track => track.stop())
           }
           
-          resolve(audioBlob)
+          resolve(blob)
         }
-        
         this.mediaRecorder.stop()
       } else {
         resolve(null)
@@ -346,19 +337,15 @@ export class VideoRecorder {
 
   async startRecording() {
     try {
-      this.stream = await navigator.mediaDevices.getUserMedia({ 
+      this.stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
         video: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          frameRate: { ideal: 30 }
-        },
-        audio: true
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+          frameRate: { ideal: 15 }
+        }
       })
-      
-      this.mediaRecorder = new MediaRecorder(this.stream, {
-        mimeType: 'video/webm;codecs=vp9,opus'
-      })
-      
+      this.mediaRecorder = new MediaRecorder(this.stream)
       this.videoChunks = []
       
       this.mediaRecorder.ondataavailable = (event) => {
@@ -367,13 +354,16 @@ export class VideoRecorder {
         }
       }
       
-      this.mediaRecorder.start(1000)
-      this.isRecording = true
+      this.mediaRecorder.onstop = () => {
+        this.isRecording = false
+      }
       
+      this.mediaRecorder.start(1000) // 每秒触发一次dataavailable事件
+      this.isRecording = true
       return this.stream
     } catch (error) {
       console.error('启动视频录制失败:', error)
-      throw error
+      return null
     }
   }
 
@@ -381,16 +371,16 @@ export class VideoRecorder {
     return new Promise((resolve) => {
       if (this.mediaRecorder && this.isRecording) {
         this.mediaRecorder.onstop = () => {
-          const videoBlob = new Blob(this.videoChunks, { type: 'video/webm' })
+          const blob = new Blob(this.videoChunks, { type: 'video/webm' })
           this.isRecording = false
           
+          // 停止所有视频轨道
           if (this.stream) {
             this.stream.getTracks().forEach(track => track.stop())
           }
           
-          resolve(videoBlob)
+          resolve(blob)
         }
-        
         this.mediaRecorder.stop()
       } else {
         resolve(null)

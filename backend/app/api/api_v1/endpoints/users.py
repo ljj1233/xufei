@@ -33,34 +33,29 @@ def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     Returns:
         User: 创建的用户信息
     """
-    # 检查邮箱是否已存在
     import logging
     logger = logging.getLogger(__name__)
     logger.info(f"尝试注册新用户: {user.username}, {user.email}")
-    print(f"尝试注册新用户: {user.username}, {user.email}")
+    
+    # 检查邮箱是否已存在
+    db_user = db.query(User).filter(User.email == user.email).first()
+    if db_user:
+        logger.warning(f"邮箱已被注册: {user.email}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered"
+        )
+    
+    # 检查用户名是否已存在
+    db_user = db.query(User).filter(User.username == user.username).first()
+    if db_user:
+        logger.warning(f"用户名已被使用: {user.username}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username already registered"
+        )
+    
     try:
-        # 检查邮箱是否已存在
-        print(f"检查邮箱是否已存在: {user.email}")
-        db_user = db.query(User).filter(User.email == user.email).first()
-        print(f"检查邮箱是否已存在结果: {db_user}")
-        if db_user:
-            logger.warning(f"邮箱已被注册: {user.email}")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email already registered"
-            )
-        
-        # 检查用户名是否已存在
-        print(f"检查用户名是否已存在: {user.username}")
-        db_user = db.query(User).filter(User.username == user.username).first()
-        print(f"检查用户名是否已存在结果: {db_user}")
-        if db_user:
-            logger.warning(f"用户名已被使用: {user.username}")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Username already registered"
-            )
-        
         # 创建新用户
         hashed_password = get_password_hash(user.password)
         db_user = User(
@@ -74,9 +69,6 @@ def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
         db.refresh(db_user)
         logger.info(f"用户注册成功: {user.username}")
         return db_user
-    except HTTPException:
-        # 重新抛出HTTP异常
-        raise
     except Exception as e:
         logger.error(f"用户注册失败: {str(e)}")
         db.rollback()

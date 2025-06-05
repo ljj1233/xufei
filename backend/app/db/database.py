@@ -66,6 +66,7 @@ def get_db():
     """
     max_retries = 3
     retry_count = 0
+    db = None
     
     while retry_count < max_retries:
         try:
@@ -73,16 +74,24 @@ def get_db():
             # 测试连接是否有效
             db.execute(text("SELECT 1"))
             logger.debug("数据库会话创建成功")
-            try:
-                yield db
-            finally:
-                db.close()
-                logger.debug("数据库会话已关闭")
             break  # 如果成功，跳出循环
         except Exception as e:
             retry_count += 1
+            if db is not None:
+                db.close()
+                db = None
             logger.error(f"数据库连接错误 (尝试 {retry_count}/{max_retries}): {str(e)}")
             if retry_count >= max_retries:
                 logger.critical("数据库连接失败，已达到最大重试次数")
                 raise
             time.sleep(1)  # 等待1秒后重试
+    
+    if db is not None:
+        try:
+            yield db
+        except Exception as e:
+            logger.error(f"数据库操作错误: {str(e)}")
+            raise
+        finally:
+            db.close()
+            logger.debug("数据库会话已关闭")

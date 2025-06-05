@@ -9,6 +9,8 @@ pymysql==1.1.0
 cryptography==41.0.5
 python-multipart==0.0.6
 python-jose==3.3.0
+# 指定兼容的bcrypt和passlib版本
+bcrypt==3.2.0
 passlib==1.7.4
 opencv-python==4.8.1.78
 numpy==1.26.1

@@ -1,9 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import axios from 'axios'
-
-// 获取API基础URL
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'
+import { userAPI } from '../api/user'
 
 // 测试模式下的默认账号
 const DEFAULT_TEST_USER = {
@@ -34,9 +31,10 @@ export const useUserStore = defineStore('user', () => {
   // 登录方法
   const login = async (userData) => {
     try {
-      const response = await axios.post(`${API_URL}/users/login`, userData)
-      if (response.data && response.data.access_token) {
-        token.value = response.data.access_token
+      console.log(`发送登录请求...`)
+      const response = await userAPI.login(userData)
+      if (response && response.access_token) {
+        token.value = response.access_token
         // 获取用户信息
         await getUserInfo()
         
@@ -47,6 +45,7 @@ export const useUserStore = defineStore('user', () => {
       }
       return { success: false, message: '登录失败' }
     } catch (error) {
+      console.error('登录错误:', error)
       return { 
         success: false, 
         message: error.response?.data?.detail || '登录失败，请检查网络连接'
@@ -57,9 +56,12 @@ export const useUserStore = defineStore('user', () => {
   // 注册方法
   const register = async (userData) => {
     try {
-      const response = await axios.post(`${API_URL}/users/register`, userData)
-      return { success: true, data: response.data }
+      console.log(`发送注册请求...`)
+      console.log('注册数据:', userData)
+      const response = await userAPI.register(userData)
+      return { success: true, data: response }
     } catch (error) {
+      console.error('注册错误:', error.response || error)
       return { 
         success: false, 
         message: error.response?.data?.detail || '注册失败，请检查网络连接'
@@ -70,14 +72,14 @@ export const useUserStore = defineStore('user', () => {
   // 获取用户信息
   const getUserInfo = async () => {
     try {
-      const response = await axios.get(`${API_URL}/users/me`, getAuthHeaders())
-      username.value = response.data.username
-      userId.value = response.data.id
-      userIsAdmin.value = response.data.is_admin || false
+      const response = await userAPI.getMe()
+      username.value = response.username
+      userId.value = response.id
+      userIsAdmin.value = response.is_admin || false
       localStorage.setItem('username', username.value)
       localStorage.setItem('user_id', userId.value)
       localStorage.setItem('user_is_admin', userIsAdmin.value.toString())
-      return { success: true, data: response.data }
+      return { success: true, data: response }
     } catch (error) {
       if (error.response?.status === 401) {
         // 如果认证失败，清除登录状态
@@ -122,11 +124,7 @@ export const useUserStore = defineStore('user', () => {
   // 修改密码
   const changePassword = async (passwordData) => {
     try {
-      const response = await axios.post(
-        `${API_URL}/users/change-password`,
-        passwordData,
-        getAuthHeaders()
-      )
+      await userAPI.changePassword(passwordData)
       return { success: true }
     } catch (error) {
       return { 
@@ -139,12 +137,8 @@ export const useUserStore = defineStore('user', () => {
   // 更新用户信息
   const updateUserInfo = async (userData) => {
     try {
-      const response = await axios.put(
-        `${API_URL}/users/me`,
-        userData,
-        getAuthHeaders()
-      )
-      return { success: true, data: response.data }
+      const response = await userAPI.updateProfile(userData)
+      return { success: true, data: response }
     } catch (error) {
       return { 
         success: false, 
@@ -156,15 +150,12 @@ export const useUserStore = defineStore('user', () => {
   // 管理员API：获取所有用户
   const getUsers = async (page = 1, pageSize = 10) => {
     try {
-      const response = await axios.get(
-        `${API_URL}/users?skip=${(page-1)*pageSize}&limit=${pageSize}`,
-        getAuthHeaders()
-      )
+      const response = await userAPI.getUsers(page, pageSize)
       return { 
         success: true, 
         data: {
-          items: response.data,
-          total: response.headers['x-total-count'] || response.data.length
+          items: response.items,
+          total: response.total
         }
       }
     } catch (error) {
@@ -178,11 +169,8 @@ export const useUserStore = defineStore('user', () => {
   // 管理员API：获取特定用户信息
   const getUserById = async (userId) => {
     try {
-      const response = await axios.get(
-        `${API_URL}/users/${userId}`,
-        getAuthHeaders()
-      )
-      return { success: true, data: response.data }
+      const response = await userAPI.getUserById(userId)
+      return { success: true, data: response }
     } catch (error) {
       return { 
         success: false, 
@@ -194,12 +182,8 @@ export const useUserStore = defineStore('user', () => {
   // 管理员API：更新用户状态
   const updateUserStatus = async (userId, isActive) => {
     try {
-      const response = await axios.patch(
-        `${API_URL}/users/${userId}/status`,
-        { is_active: isActive },
-        getAuthHeaders()
-      )
-      return { success: true, data: response.data }
+      const response = await userAPI.updateUserStatus(userId, isActive)
+      return { success: true, data: response }
     } catch (error) {
       return { 
         success: false, 
@@ -211,12 +195,8 @@ export const useUserStore = defineStore('user', () => {
   // 管理员API：更新用户管理员权限
   const updateUserAdmin = async (userId, isAdmin) => {
     try {
-      const response = await axios.patch(
-        `${API_URL}/users/${userId}/admin`,
-        { is_admin: isAdmin },
-        getAuthHeaders()
-      )
-      return { success: true, data: response.data }
+      const response = await userAPI.updateUserAdmin(userId, isAdmin)
+      return { success: true, data: response }
     } catch (error) {
       return { 
         success: false, 
@@ -228,10 +208,7 @@ export const useUserStore = defineStore('user', () => {
   // 管理员API：删除用户
   const deleteUserById = async (userId) => {
     try {
-      const response = await axios.delete(
-        `${API_URL}/users/${userId}`,
-        getAuthHeaders()
-      )
+      await userAPI.deleteUser(userId)
       return { success: true }
     } catch (error) {
       return { 

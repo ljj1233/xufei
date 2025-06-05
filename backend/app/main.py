@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 import sys
 import logging
+import datetime
 from pathlib import Path
 from contextlib import asynccontextmanager
 from app.db.database import engine, Base
@@ -51,28 +52,42 @@ def init_default_admin():
         session.close()
     except Exception as e:
         logger.error(f"初始化管理员账号失败: {str(e)}")
+        logger.exception("详细错误信息:")
 
 # 应用生命周期管理
-from contextlib import asynccontextmanager
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期管理
     
     在应用启动时执行的操作，如创建数据库表
     """
-    # 创建数据库表
-    # 注意：在生产环境中应该使用Alembic进行数据库迁移
-    Base.metadata.create_all(bind=engine, checkfirst=True)
+    # 启动前的操作
+    logger.info("正在初始化应用...")
     
-    # 初始化默认管理员账号
-    init_default_admin()
+    try:
+        # 创建数据库表
+        # 注意：在生产环境中应该使用Alembic进行数据库迁移
+        Base.metadata.create_all(bind=engine, checkfirst=True)
+        logger.info("数据库表初始化完成")
+        
+        # 初始化默认管理员账号
+        init_default_admin()
+        logger.info("应用初始化完成，开始提供服务")
+    except Exception as e:
+        logger.error(f"应用初始化失败: {str(e)}")
+        logger.exception("详细错误信息:")
     
     yield
     
     # 应用关闭时的清理操作
-    # 关闭所有数据库连接
-    engine.dispose()
+    logger.info("应用正在关闭...")
+    try:
+        # 关闭所有数据库连接
+        engine.dispose()
+        logger.info("数据库连接已关闭")
+    except Exception as e:
+        logger.error(f"关闭数据库连接失败: {str(e)}")
+        logger.exception("详细错误信息:")
 
 # 创建FastAPI应用
 app = FastAPI(
@@ -117,7 +132,8 @@ def read_root():
     Returns:
         dict: 应用信息
     """
-    return {"message": "欢迎使用多模态面试评测智能体API"}
+    logger.info("访问根路由")
+    return {"message": "欢迎使用多模态面试评测智能体API", "status": "running"}
 
 
 @app.get("/api/v1/admin/db-status")
@@ -138,6 +154,7 @@ async def check_db_pool_status():
         return stats
     except Exception as e:
         logger.error(f"获取连接池状态失败: {str(e)}")
+        logger.exception("详细错误信息:")
         return {
             "status": "error",
             "message": str(e)
@@ -146,6 +163,7 @@ async def check_db_pool_status():
 
 if __name__ == "__main__":
     import uvicorn
+    logger.info("通过__main__启动应用")
     uvicorn.run(
         app="main:app",
         host=settings.SERVER_HOST,

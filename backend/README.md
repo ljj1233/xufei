@@ -55,6 +55,7 @@ backend/
 │   └── job_position/       # 职位相关测试
 ├── alembic/                # 数据库迁移
 ├── requirements.txt        # 依赖项
+├── fix_bcrypt.py           # 修复bcrypt/passlib兼容性问题的脚本
 ├── .env.example            # 环境变量示例
 ├── MYSQL_MIGRATION_GUIDE.md # MySQL迁移说明
 ├── DEVELOPMENT_LOG.md      # 开发日志
@@ -110,8 +111,7 @@ backend/
 
 ```bash
 # 开发模式
-cd app
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 # 生产模式
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
@@ -222,6 +222,33 @@ gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000
 - 检查上传目录权限
 - 确认文件大小是否超过限制
 - 检查文件类型是否支持
+
+### bcrypt和passlib版本不兼容
+
+如果遇到以下警告：
+```
+WARNING:passlib.handlers.bcrypt:(trapped) error reading bcrypt version
+AttributeError: module 'bcrypt' has no attribute '__about__'
+```
+
+解决方法：
+1. 运行修复脚本：`python fix_bcrypt.py`
+2. 或手动安装兼容版本：
+   ```bash
+   pip uninstall -y bcrypt passlib
+   pip install bcrypt==3.2.0 passlib==1.7.4
+   ```
+
+### 应用启动后立即关闭
+
+如果应用启动后立即关闭：
+1. 检查日志中的错误信息
+2. 确认数据库连接是否正常
+3. 检查`.env`文件中的配置是否正确
+4. 尝试使用较详细的日志级别启动：
+   ```bash
+   uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 --log-level debug
+   ```
 
 ### 测试失败
 
