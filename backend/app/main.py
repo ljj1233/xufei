@@ -1,174 +1,85 @@
-from fastapi import FastAPI, Depends
-from fastapi.middleware.cors import CORSMiddleware
+"""
+FastAPI主应用
+
+集成所有API路由和服务
+"""
+
 import os
-import sys
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 import logging
-import datetime
-from pathlib import Path
-from contextlib import asynccontextmanager
-from app.db.database import engine, Base
-from sqlalchemy.orm import sessionmaker
-from app.models.user import User
-from app.core.security import get_password_hash
 
-sys.path.append(str(Path(__file__).parent.resolve()))
-
-from app.core.config import settings
-from app.api.api_v1.api import api_router
-
-# 配置日志
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-# 创建上传目录
-os.makedirs(settings.UPLOAD_FOLDER, exist_ok=True)
-
-# 初始化默认管理员账号
-def init_default_admin():
-    """初始化默认管理员账号
-    
-    检查数据库中是否已有管理员账号，如果没有则创建一个默认管理员账号
-    """
-    try:
-        Session = sessionmaker(bind=engine)
-        session = Session()
-        
-        admin = session.query(User).filter(User.is_admin == True).first()
-        if not admin:
-            # 创建管理员账号
-            admin_user = User(
-                username="admin",
-                email="admin@example.com",
-                hashed_password=get_password_hash("admin123"),
-                is_active=True,
-                is_admin=True
-            )
-            session.add(admin_user)
-            session.commit()
-            logger.info("已创建默认管理员账号: admin@example.com / admin123")
-        else:
-            logger.info(f"已存在管理员账号: {admin.email}")
-        
-        session.close()
-    except Exception as e:
-        logger.error(f"初始化管理员账号失败: {str(e)}")
-        logger.exception("详细错误信息:")
-
-# 应用生命周期管理
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """应用生命周期管理
-    
-    在应用启动时执行的操作，如创建数据库表
-    """
-    # 启动前的操作
-    logger.info("正在初始化应用...")
-    
-    try:
-        # 创建数据库表
-        # 注意：在生产环境中应该使用Alembic进行数据库迁移
-        Base.metadata.create_all(bind=engine, checkfirst=True)
-        logger.info("数据库表初始化完成")
-        
-        # 初始化默认管理员账号
-        init_default_admin()
-        logger.info("应用初始化完成，开始提供服务")
-    except Exception as e:
-        logger.error(f"应用初始化失败: {str(e)}")
-        logger.exception("详细错误信息:")
-    
-    yield
-    
-    # 应用关闭时的清理操作
-    logger.info("应用正在关闭...")
-    try:
-        # 关闭所有数据库连接
-        engine.dispose()
-        logger.info("数据库连接已关闭")
-    except Exception as e:
-        logger.error(f"关闭数据库连接失败: {str(e)}")
-        logger.exception("详细错误信息:")
-
-# 创建FastAPI应用
-app = FastAPI(
-    title=settings.PROJECT_NAME,
-    openapi_url=f"{settings.API_V1_STR}/openapi.json",
-    lifespan=lifespan
+# 配置基本日志
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler("logs/app.log")
+    ]
 )
 
-# 设置CORS
-# 配置允许的前端源
-origins = [
-    "http://localhost:5173",  # Vite默认开发服务器
-    "http://localhost:4173",  # Vite预览服务器
-    "http://localhost:3000",  # 其他可能的前端开发服务器
-    "http://127.0.0.1:5173",
-    "http://127.0.0.1:4173",
-    "http://127.0.0.1:3000",
-]
+logger = logging.getLogger("app")
 
-# 如果是开发环境，允许所有源
-if os.getenv("ENVIRONMENT") == "development":
-    origins = ["*"]
+# 导入API路由
+from app.apis.learning_recommendation_api import router as learning_recommendation_router
 
+# 创建应用
+app = FastAPI(
+    title="多模态面试智能体API",
+    description="提供面试评测和个性化学习推荐服务",
+    version="1.0.0",
+)
+
+# 配置CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],  # 在生产环境中应该设置具体的源
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# 包含API路由
-app.include_router(api_router, prefix=settings.API_V1_STR)
-
+# 注册路由
+app.include_router(learning_recommendation_router)
 
 @app.get("/")
-def read_root():
-    """根路由
-    
-    返回应用基本信息
-    
-    Returns:
-        dict: 应用信息
-    """
+async def root():
+    """API根路由，返回欢迎信息"""
     logger.info("访问根路由")
-    return {"message": "欢迎使用多模态面试评测智能体API", "status": "running"}
+    return {"message": "欢迎使用多模态面试智能体API"}
 
+@app.get("/health")
+async def health_check():
+    """健康检查接口"""
+    return {"status": "healthy"}
 
-@app.get("/api/v1/admin/db-status")
-async def check_db_pool_status():
-    """检查数据库连接池状态
+# 启动事件
+@app.on_event("startup")
+async def startup_event():
+    """应用启动时执行的操作"""
+    # 确保数据目录存在
+    os.makedirs("data", exist_ok=True)
+    os.makedirs("logs", exist_ok=True)
     
-    Returns:
-        dict: 连接池统计信息
-    """
-    try:
-        stats = {
-            "pool_size": engine.pool.size(),
-            "checkedin": engine.pool.checkedin(),
-            "overflow": engine.pool.overflow(),
-            "checkedout": engine.pool.checkedout(),
-            "status": "healthy"
-        }
-        return stats
-    except Exception as e:
-        logger.error(f"获取连接池状态失败: {str(e)}")
-        logger.exception("详细错误信息:")
-        return {
-            "status": "error",
-            "message": str(e)
-        }
+    logger.info("应用已启动")
 
+# 关闭事件
+@app.on_event("shutdown")
+async def shutdown_event():
+    """应用关闭时执行的操作"""
+    logger.info("应用已关闭")
 
+# 如果直接运行此文件
 if __name__ == "__main__":
     import uvicorn
-    logger.info("通过__main__启动应用")
+    
+    # 启动服务器
     uvicorn.run(
-        app="main:app",
-        host=settings.SERVER_HOST,
-        port=settings.SERVER_PORT,
+        "app.main:app",
+        host="0.0.0.0",
+        port=8000,
         reload=True,
-        log_level=settings.LOG_LEVEL.lower()
+        log_level="info",
     )
 
