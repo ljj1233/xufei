@@ -17,12 +17,30 @@
                 router
                 class="main-menu"
               >
-                <el-menu-item index="/">首页</el-menu-item>
-                <el-menu-item index="/upload">上传面试</el-menu-item>
-                <el-menu-item index="/interview-practice">模拟面试</el-menu-item>
-                <el-menu-item index="/practice-history">练习记录</el-menu-item>
-                <el-menu-item index="/user">个人中心</el-menu-item>
-                <el-menu-item v-if="userStore.isAdmin" index="/admin">管理控制台</el-menu-item>
+                <el-menu-item index="/">
+                  <icon-home class="nav-icon" />
+                  <span>首页</span>
+                </el-menu-item>
+                <el-menu-item index="/upload">
+                  <icon-upload class="nav-icon" />
+                  <span>上传面试</span>
+                </el-menu-item>
+                <el-menu-item index="/interview-practice">
+                  <icon-practice class="nav-icon" />
+                  <span>模拟面试</span>
+                </el-menu-item>
+                <el-menu-item index="/practice-history">
+                  <icon-history class="nav-icon" />
+                  <span>练习记录</span>
+                </el-menu-item>
+                <el-menu-item index="/user">
+                  <icon-user class="nav-icon" />
+                  <span>个人中心</span>
+                </el-menu-item>
+                <el-menu-item v-if="userStore.isAdmin" index="/admin">
+                  <icon-admin class="nav-icon" />
+                  <span>管理控制台</span>
+                </el-menu-item>
               </el-menu>
             </div>
             <div class="user-actions">
@@ -36,10 +54,10 @@
                   <template #dropdown>
                     <el-dropdown-menu>
                       <el-dropdown-item @click="router.push('/user')">
-                        <el-icon><UserFilled /></el-icon> 个人中心
+                        <icon-user class="dropdown-icon" /> 个人中心
                       </el-dropdown-item>
                       <el-dropdown-item @click="router.push('/interview-practice')">
-                        <el-icon><VideoCameraFilled /></el-icon> 开始面试
+                        <icon-practice class="dropdown-icon" /> 开始面试
                       </el-dropdown-item>
                       <el-dropdown-item divided @click="logout">
                         <el-icon><SwitchButton /></el-icon> 退出登录
@@ -78,9 +96,17 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from './stores/user'
-import { ArrowDown, UserFilled, VideoCameraFilled, SwitchButton } from '@element-plus/icons-vue'
+import { ArrowDown, SwitchButton } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
+
+// 导入SVG图标组件
+import IconHome from './components/icons/IconHome.vue'
+import IconUpload from './components/icons/IconUpload.vue'
+import IconPractice from './components/icons/IconPractice.vue'
+import IconHistory from './components/icons/IconHistory.vue'
+import IconUser from './components/icons/IconUser.vue'
+import IconAdmin from './components/icons/IconAdmin.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -190,11 +216,31 @@ onMounted(async () => {
   height: 60px;
   line-height: 60px;
   border-bottom: 2px solid transparent;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .main-menu.el-menu--horizontal .el-menu-item.is-active {
   color: var(--primary-color);
   border-bottom: 2px solid var(--primary-color);
+}
+
+.main-menu.el-menu--horizontal .el-menu-item.is-active .nav-icon {
+  color: var(--primary-color);
+}
+
+.nav-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--text-secondary);
+}
+
+.dropdown-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+  vertical-align: middle;
 }
 
 .user-actions {
@@ -249,16 +295,6 @@ onMounted(async () => {
 .footer-links a {
   color: var(--primary-color);
   text-decoration: none;
-  font-size: 14px;
-}
-
-.footer-links a:hover {
-  text-decoration: underline;
-}
-
-.footer-content p {
-  margin: 0;
-  font-size: 12px;
 }
 
 @media (max-width: 768px) {
