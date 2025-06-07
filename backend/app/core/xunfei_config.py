@@ -13,6 +13,8 @@ class XunFeiSettings(BaseSettings):
     XUNFEI_IAT_URL: str = "https://api.xfyun.cn/v1/service/v1/iat"
     # 情感分析服务配置
     XUNFEI_EMOTION_URL: str = "https://api.xfyun.cn/v1/service/v1/emotion"
+    # 星火大模型服务配置
+    XUNFEI_SPARK_URL: str = "wss://spark-api.xfyun.cn/v1.1/chat"
     
     model_config = dict(env_file=".env", case_sensitive=True, extra="allow")
 

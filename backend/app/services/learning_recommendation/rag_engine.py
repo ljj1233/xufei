@@ -24,7 +24,7 @@ class RAGEngine:
     def __init__(self, 
                 resource_service: ResourceManagementService,
                 api_key: Optional[str] = None,
-                llm_model: str = "gpt-3.5-turbo",
+                llm_model: str = "Qwen/Qwen2.5-7B-Instruct",
                 embedding_model: str = "text-embedding-ada-002"):
         """
         初始化RAG检索引擎
@@ -447,8 +447,11 @@ class RAGEngine:
         if not self.api_key:
             raise ValueError("未提供OpenAI API密钥")
             
+        # 从环境变量获取API基础URL，如果不存在则使用默认值
+        api_base = os.environ.get("OPENAI_API_BASE", "https://api-inference.modelscope.cn/v1/")
+        
         # 准备API请求
-        url = "https://api.openai.com/v1/chat/completions"
+        url = f"{api_base}/chat/completions"
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.api_key}"

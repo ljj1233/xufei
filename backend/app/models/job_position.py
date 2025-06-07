@@ -31,3 +31,4 @@ class JobPosition(Base):
 
     # 关联关系
     interviews = relationship("Interview", back_populates="job_position")
+    questions = relationship("InterviewQuestion", back_populates="job_position")

@@ -132,6 +132,25 @@ class AgentConfig:
         
         if os.environ.get("XUNFEI_EMOTION_URL"):
             self.config["services"]["xunfei"]["emotion_url"] = os.environ.get("XUNFEI_EMOTION_URL")
+            
+        # 加载讯飞星火API URL配置
+        if os.environ.get("SPARK_API_URL"):
+            if "spark" not in self.config["services"]:
+                self.config["services"]["spark"] = {}
+            self.config["services"]["spark"]["api_url"] = os.environ.get("SPARK_API_URL")
+        
+        # 加载OpenAI API配置
+        if "openai" not in self.config["services"]:
+            self.config["services"]["openai"] = {}
+            
+        if os.environ.get("OPENAI_API_KEY"):
+            self.config["services"]["openai"]["api_key"] = os.environ.get("OPENAI_API_KEY")
+            
+        if os.environ.get("OPENAI_API_BASE"):
+            self.config["services"]["openai"]["api_base"] = os.environ.get("OPENAI_API_BASE")
+            
+        if os.environ.get("OPENAI_MODEL"):
+            self.config["services"]["openai"]["default_model"] = os.environ.get("OPENAI_MODEL")
     
     def get(self, section: str, key: str, default: Any = None) -> Any:
         """获取配置值

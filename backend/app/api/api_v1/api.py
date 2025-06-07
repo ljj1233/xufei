@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.api_v1.endpoints import interviews, users, analysis, job_positions, interview_session, health, websocket
+from app.api.api_v1.endpoints import interviews, users, analysis, job_positions, interview_session, health, websocket, practice
 
 api_router = APIRouter()
 
@@ -12,4 +12,5 @@ api_router.include_router(interview_session.router, prefix="/interview-sessions"
 api_router.include_router(job_positions.router, prefix="/job-positions", tags=["job_positions"])
 api_router.include_router(health.router, prefix="/health", tags=["health"])
 api_router.include_router(websocket.router, tags=["websocket"])
+api_router.include_router(practice.router, prefix="/practice", tags=["practice"])
 

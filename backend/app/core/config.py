@@ -35,11 +35,13 @@ class Settings(BaseSettings):
     
     # 安全配置
     SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-here")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8  # 8 days
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     # 日志配置
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
     LOG_FILE: str = os.getenv("LOG_FILE", "logs/app.log")
+    
     # 多模态处理配置
     UPLOAD_FOLDER: str = "uploads"
     ALLOWED_EXTENSIONS: List[str] = ["mp4", "avi", "mov", "mp3", "wav"]
@@ -47,6 +49,26 @@ class Settings(BaseSettings):
     
     # 模型配置
     TEXT_MODEL: str = "bert-base-chinese"
+    
+    # OpenAI API配置
+    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
+    OPENAI_API_BASE: str = os.getenv("OPENAI_API_BASE", "https://api-inference.modelscope.cn/v1/")
+    OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "Qwen/Qwen2.5-7B-Instruct")
+    
+    # 讯飞星火大模型配置
+    SPARK_APPID: str = os.getenv("SPARK_APPID", "")
+    SPARK_API_KEY: str = os.getenv("SPARK_API_KEY", "")
+    SPARK_API_SECRET: str = os.getenv("SPARK_API_SECRET", "")
+    SPARK_API_URL: str = os.getenv("SPARK_API_URL", "wss://spark-api.xfyun.cn/v1.1/chat")
+    SPARK_MODEL: str = os.getenv("SPARK_MODEL", "v2.0")
+    
+    # LLM服务配置
+    LLM_SERVICE_PROVIDER: str = os.getenv("LLM_SERVICE_PROVIDER", "modelscope")  # 可选：modelscope, spark, azure_openai
+    LLM_TIMEOUT: int = int(os.getenv("LLM_TIMEOUT", "30"))  # API请求超时时间（秒）
+    LLM_TEMPERATURE: float = float(os.getenv("LLM_TEMPERATURE", "0.7"))  # 模型创造性
+    
+    # LLM服务提供商选择（modelscope或xunfei）
+    LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "modelscope")
     
     model_config = dict(case_sensitive=True)
     

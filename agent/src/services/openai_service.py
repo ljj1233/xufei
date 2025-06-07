@@ -26,7 +26,7 @@ class OpenAIService:
         # 从配置中加载OpenAI API参数
         self.api_key = self.config.get_service_config("openai", "api_key", "")
         self.api_base = self.config.get_service_config("openai", "api_base", None)
-        self.default_model = self.config.get_service_config("openai", "default_model", "gpt-4")
+        self.default_model = self.config.get_service_config("openai", "default_model", "Qwen/Qwen2.5-7B-Instruct")
         
         # 初始化客户端
         self.client = AsyncOpenAI(

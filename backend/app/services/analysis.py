@@ -9,6 +9,7 @@ from transformers import AutoTokenizer, AutoModel
 import logging
 import traceback
 import time
+import requests
 
 from app.core.config import settings
 from app.services.xunfei_service import xunfei_service
@@ -373,7 +374,7 @@ def speech_to_text(file_path: str) -> str:
 def analyze_content(text: str) -> Dict[str, Any]:
     """分析文本内容
     
-    对文本内容进行分析
+    对文本内容进行分析，使用Qwen2.5-7B-Instruct模型进行更准确的评估
     
     Args:
         text: 文本内容
@@ -381,7 +382,7 @@ def analyze_content(text: str) -> Dict[str, Any]:
     Returns:
         Dict[str, Any]: 内容分析结果
     """
-    # 这里是示例实现，实际项目中应使用NLP模型
+    # 如果文本为空，返回默认值
     if not text:
         return {
             "relevance": 5.0,
@@ -389,11 +390,186 @@ def analyze_content(text: str) -> Dict[str, Any]:
             "key_points": ["无内容"]
         }
     
-    # 加载预训练模型（实际使用时取消注释）
-    # tokenizer = AutoTokenizer.from_pretrained(settings.TEXT_MODEL)
-    # model = AutoModel.from_pretrained(settings.TEXT_MODEL)
+    try:
+        # 从环境变量获取API配置
+        api_key = os.environ.get("OPENAI_API_KEY")
+        api_base = os.environ.get("OPENAI_API_BASE", "https://api-inference.modelscope.cn/v1/")
+        
+        # 获取LLM服务提供商配置
+        llm_provider = os.environ.get("LLM_PROVIDER", "modelscope").lower()
+        
+        # 根据LLM提供商选择不同的评分方法
+        if llm_provider == "xunfei" or not api_key:
+            # 使用讯飞星火大模型进行评分
+            logger.info("使用讯飞星火大模型进行内容分析")
+            return _analyze_content_with_xunfei(text)
+        else:
+            # 使用ModelScope的Qwen2.5-7B-Instruct进行评分
+            logger.info("使用Qwen2.5-7B-Instruct模型进行内容分析")
+            return _analyze_content_with_openai(text, api_key, api_base)
+            
+    except Exception as e:
+        logger.error(f"调用LLM分析内容失败: {e}")
+        return _analyze_content_fallback(text)
+
+
+def _analyze_content_with_openai(text: str, api_key: str, api_base: str) -> Dict[str, Any]:
+    """使用OpenAI兼容API进行内容分析
     
-    # 简单关键词匹配作为示例
+    Args:
+        text: 文本内容
+        api_key: API密钥
+        api_base: API基础URL
+        
+    Returns:
+        Dict[str, Any]: 内容分析结果
+    """
+    # 构建分析提示
+    prompt = f"""
+    请分析以下面试回答内容，并提供以下评估：
+    1. 相关性评分（0-10分）：回答与面试问题的相关程度
+    2. 结构评分（0-10分）：回答的结构性和逻辑性
+    3. 关键点（最多5个）：回答中的主要观点或亮点
+    
+    回答内容：
+    {text}
+    
+    请以JSON格式返回结果，格式如下：
+    {{
+        "relevance": 分数,
+        "structure": 分数,
+        "key_points": ["关键点1", "关键点2", ...]
+    }}
+    """
+    
+    # 调用API
+    url = f"{api_base}/chat/completions"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {api_key}"
+    }
+    data = {
+        "model": "Qwen/Qwen2.5-7B-Instruct",  # 使用Qwen2.5-7B-Instruct模型
+        "messages": [
+            {"role": "system", "content": "你是一个专业的面试评估助手，负责分析面试回答的质量。"},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.3
+    }
+    
+    response = requests.post(url, headers=headers, json=data)
+    
+    # 检查响应状态
+    if response.status_code != 200:
+        logger.error(f"API请求失败: {response.status_code} - {response.text}")
+        return _analyze_content_fallback(text)
+        
+    # 解析响应
+    result = response.json()
+    content = result["choices"][0]["message"]["content"]
+    
+    # 提取JSON结果
+    try:
+        import re
+        json_match = re.search(r'({.*})', content, re.DOTALL)
+        if json_match:
+            analysis_result = json.loads(json_match.group(1))
+        else:
+            analysis_result = json.loads(content)
+            
+        # 确保结果格式正确
+        if "relevance" not in analysis_result or "structure" not in analysis_result or "key_points" not in analysis_result:
+            logger.warning("API返回的结果格式不正确，使用备用分析方法")
+            return _analyze_content_fallback(text)
+            
+        # 确保分数在0-10范围内
+        analysis_result["relevance"] = float(min(10.0, max(0.0, analysis_result["relevance"])))
+        analysis_result["structure"] = float(min(10.0, max(0.0, analysis_result["structure"])))
+        
+        logger.info(f"内容分析完成: 相关性={analysis_result['relevance']}, 结构性={analysis_result['structure']}")
+        return analysis_result
+        
+    except (json.JSONDecodeError, KeyError) as e:
+        logger.error(f"解析API响应失败: {e}")
+        return _analyze_content_fallback(text)
+
+
+def _analyze_content_with_xunfei(text: str) -> Dict[str, Any]:
+    """使用讯飞星火大模型进行内容分析
+    
+    Args:
+        text: 文本内容
+        
+    Returns:
+        Dict[str, Any]: 内容分析结果
+    """
+    try:
+        # 定义评分标准
+        criteria = {
+            "relevance": "回答与面试问题的相关程度",
+            "structure": "回答的结构性和逻辑性",
+            "key_points": "回答中的主要观点或亮点"
+        }
+        
+        # 调用讯飞星火大模型评分服务
+        assessment_result = xunfei_service.spark_assessment(text, criteria)
+        
+        if not assessment_result or "aspects" not in assessment_result:
+            logger.warning("讯飞星火大模型返回的结果格式不正确，使用备用分析方法")
+            return _analyze_content_fallback(text)
+        
+        # 提取评分结果
+        aspects = assessment_result.get("aspects", {})
+        
+        # 转换为标准格式
+        result = {
+            "relevance": float(min(10.0, max(0.0, aspects.get("relevance", {}).get("score", 50) / 10))),
+            "structure": float(min(10.0, max(0.0, aspects.get("structure", {}).get("score", 50) / 10)))
+        }
+        
+        # 提取关键点
+        if "key_points" in aspects:
+            # 尝试从反馈中提取关键点
+            feedback = aspects["key_points"].get("feedback", "")
+            key_points = []
+            
+            # 尝试从反馈中解析关键点列表
+            import re
+            points = re.findall(r'\d+\.\s*(.*?)(?=\d+\.|$)', feedback)
+            if points:
+                key_points = [p.strip() for p in points if p.strip()][:5]
+            
+            # 如果无法从反馈中提取，则使用文本中的句子作为关键点
+            if not key_points:
+                sentences = text.split("。")
+                key_points = [s.strip() for s in sentences if len(s.strip()) > 10][:5]
+                
+            result["key_points"] = key_points
+        else:
+            # 如果没有关键点信息，使用文本中的句子作为关键点
+            sentences = text.split("。")
+            result["key_points"] = [s.strip() for s in sentences if len(s.strip()) > 10][:5]
+        
+        logger.info(f"讯飞星火内容分析完成: 相关性={result['relevance']}, 结构性={result['structure']}")
+        return result
+        
+    except Exception as e:
+        logger.error(f"调用讯飞星火大模型分析内容失败: {e}")
+        return _analyze_content_fallback(text)
+
+
+def _analyze_content_fallback(text: str) -> Dict[str, Any]:
+    """备用的内容分析方法
+    
+    当LLM API调用失败时使用的备用分析方法
+    
+    Args:
+        text: 文本内容
+        
+    Returns:
+        Dict[str, Any]: 内容分析结果
+    """
+    # 简单关键词匹配作为备用方法
     positive_keywords = ["团队", "协作", "解决问题", "经验", "项目", "成功", "优势", "能力"]
     structure_keywords = ["首先", "其次", "最后", "总结", "例如", "因此", "但是", "而且"]
     

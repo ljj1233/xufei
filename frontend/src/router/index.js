@@ -72,6 +72,12 @@ const router = createRouter({
       component: () => import('../views/PracticeHistoryView.vue'),
       meta: { requiresAuth: true }
     },
+    {
+      path: '/practice/:positionId',
+      name: 'practice-view',
+      component: () => import('../views/PracticeView.vue'),
+      meta: { requiresAuth: true }
+    },
     // 添加管理员路由
     {
       path: '/admin',

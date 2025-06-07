@@ -244,6 +244,8 @@ class AsyncXunFeiService:
             # 构造请求URL
             url = f"{self.spark_url}?appid={self.app_id}&timestamp={current_time}&signature={signature}"
             
+            logger.info(f"使用星火API URL: {self.spark_url}")
+            
             # 发送WebSocket请求
             response = {}
             async with aiohttp.ClientSession() as session:
