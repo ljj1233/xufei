@@ -25,8 +25,8 @@ logging.basicConfig(
 
 logging.getLogger('agent').setLevel(logging.INFO)
 
-# 导出核心模块
-from src.core import agent
+# 暂时注释掉导入，防止导入错误
+# from src.core import agent
 
 __version__ = '0.1.0'
 
