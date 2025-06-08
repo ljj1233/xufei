@@ -65,6 +65,127 @@ class InterviewAgent:
             "depth": {"score": 6.5, "details": "深度适中"},
             "overall": {"score": 7.0}
         }
+        
+    async def analyze_quick_practice(self, session_id, question_id, answer_text, 
+                                   audio_data=None, job_description="", question=""):
+        """模拟快速练习PLUS分析"""
+        # 这是一个新增的方法，用于支持快速练习PLUS功能
+        
+        # 内容质量分析
+        content_quality = {
+            "relevance": 7.5,
+            "relevance_review": "回答高度相关，直接针对问题进行了回应",
+            "depth_and_detail": 6.0,
+            "depth_review": "回答包含了一些具体例子，但缺少具体数据支撑",
+            "professionalism": 8.0,
+            "matched_keywords": ["算法", "数据结构", "优化"],
+            "professional_style_review": "使用了专业术语，表达专业"
+        }
+        
+        # 思维能力分析
+        cognitive_skills = {
+            "logical_structure": 7.0,
+            "structure_review": "总分总结构，逻辑较为清晰",
+            "clarity_of_thought": 7.5,
+            "clarity_review": "思路清晰，没有明显矛盾"
+        }
+        
+        # 沟通技巧分析（如果提供了音频数据）
+        communication_skills = None
+        if audio_data:
+            communication_skills = {
+                "fluency": 7.0,
+                "fluency_details": {
+                    "filler_words_count": 3,
+                    "unnatural_pauses_count": 1
+                },
+                "speech_rate": 7.5,
+                "speech_rate_details": {
+                    "words_per_minute": 160,
+                    "pace_category": "适中"
+                },
+                "vocal_energy": 6.5,
+                "vocal_energy_details": {
+                    "pitch_std_dev": 15.0,
+                    "pitch_category": "平稳有变化"
+                },
+                "conciseness": 6.5,
+                "conciseness_review": "表达较为简洁，但有少量冗余"
+            }
+        
+        # 反馈生成
+        strengths = [
+            {
+                "category": "content_quality",
+                "item": "relevance",
+                "description": "回答的相关性极高，你的回答紧扣问题核心，展现了良好的理解能力。"
+            },
+            {
+                "category": "cognitive_skills",
+                "item": "clarity_of_thought",
+                "description": "思维清晰，能够有条理地表达复杂概念。"
+            }
+        ]
+        
+        growth_areas = [
+            {
+                "category": "content_quality",
+                "item": "depth_and_detail",
+                "description": "回答缺乏具体的数据和例子支撑",
+                "action_suggestion": "使用STAR法则，特别是在描述结果时加入具体数据"
+            }
+        ]
+        
+        if communication_skills:
+            if communication_skills["fluency"] < 7.0:
+                growth_areas.append({
+                    "category": "communication_skills",
+                    "item": "fluency",
+                    "description": f"检测到{communication_skills['fluency_details']['filler_words_count']}次填充词",
+                    "action_suggestion": "用有意的停顿代替填充词，增强表达的专业性"
+                })
+            else:
+                strengths.append({
+                    "category": "communication_skills",
+                    "item": "fluency",
+                    "description": "语言表达流畅，很少使用填充词。"
+                })
+        
+        # 计算模块得分
+        content_quality_score = (content_quality["relevance"] + content_quality["depth_and_detail"] + 
+                                content_quality["professionalism"]) / 3 * 10
+        
+        cognitive_skills_score = (cognitive_skills["logical_structure"] + 
+                                 cognitive_skills["clarity_of_thought"]) / 2 * 10
+        
+        communication_skills_score = 0
+        if communication_skills:
+            communication_skills_score = (communication_skills["fluency"] + 
+                                         communication_skills["speech_rate"] + 
+                                         communication_skills["vocal_energy"] + 
+                                         communication_skills["conciseness"]) / 4 * 10
+        
+        # 计算总分
+        weights = [0.4, 0.3, 0.3] if communication_skills else [0.6, 0.4, 0]
+        overall_score = (content_quality_score * weights[0] + 
+                         cognitive_skills_score * weights[1] + 
+                         communication_skills_score * weights[2])
+        
+        feedback = {
+            "strengths": strengths,
+            "growth_areas": growth_areas,
+            "content_quality_score": content_quality_score,
+            "cognitive_skills_score": cognitive_skills_score,
+            "communication_skills_score": communication_skills_score,
+            "overall_score": overall_score
+        }
+        
+        return {
+            "content_quality": content_quality,
+            "cognitive_skills": cognitive_skills,
+            "communication_skills": communication_skills,
+            "feedback": feedback
+        }
 
 from app.core.config import settings
 
@@ -203,6 +324,34 @@ class AIAgentService:
             
         except Exception as e:
             logger.error(f"Failed to analyze question answer: {str(e)}")
+            return None
+            
+    async def analyze_quick_practice(
+        self,
+        session_id: int,
+        question_id: int,
+        answer_text: str,
+        audio_data: Optional[bytes] = None,
+        job_description: str = "",
+        question: str = ""
+    ) -> Optional[Dict[str, Any]]:
+        """分析快速练习回答 - 新增方法"""
+        try:
+            # 快速练习可以不需要活跃会话
+            # 调用AI智能体分析快速练习
+            result = await self.agent.analyze_quick_practice(
+                session_id=str(session_id),
+                question_id=question_id,
+                answer_text=answer_text,
+                audio_data=audio_data,
+                job_description=job_description,
+                question=question
+            )
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Failed to analyze quick practice: {str(e)}")
             return None
     
     def generate_audio_feedback(self, analysis_result: Dict[str, Any]) -> List[Dict[str, Any]]:

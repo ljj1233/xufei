@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Float, String, DateTime, ForeignKey, JSON
+from sqlalchemy import Column, Integer, Float, String, DateTime, ForeignKey, JSON, Text
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.db.database import Base
@@ -9,6 +9,7 @@ class Analysis(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     interview_id = Column(Integer, ForeignKey("interviews.id"), unique=True, nullable=False)
+    analysis_type = Column(String(50), default="standard")  # 新增字段：分析类型
     
     # 综合评分
     overall_score = Column(Float)
@@ -44,6 +45,9 @@ class Analysis(Base):
     task_score = Column(Float)  # 任务目标评分
     action_score = Column(Float)  # 行动措施评分
     result_score = Column(Float)  # 结果成效评分
+    
+    # 快速练习PLUS分析数据 - 新增字段
+    quick_practice_data = Column(JSON)  # 存储完整的快速练习PLUS分析结果
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
