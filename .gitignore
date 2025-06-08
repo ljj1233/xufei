@@ -4,7 +4,7 @@
 *.zip
 *.rar
 
-# .env
+.env
 *.env.local
 *.env.testing
 *.json

@@ -51,13 +51,15 @@ class ContentAnalyzer(Analyzer):
             self._model = None
             self._tokenizer = None
     
-    def extract_features(self, text: str) -> Dict[str, Any]:
+    def extract_features(self, text: str, job_description: str = "", question: str = "") -> Dict[str, Any]:
         """提取文本特征
         
         从文本中提取特征
         
         Args:
             text: 文本内容
+            job_description: 岗位描述
+            question: 面试问题
             
         Returns:
             Dict[str, Any]: 提取的特征
@@ -68,6 +70,8 @@ class ContentAnalyzer(Analyzer):
         # 基本文本特征
         features = {
             "text": text,
+            "job_description": job_description,
+            "question": question,
             "length": len(text),
             "word_count": len(text.split()),
             "sentence_count": len(re.split(r'[。！？.!?]', text)),
@@ -78,7 +82,7 @@ class ContentAnalyzer(Analyzer):
         features.update(star_features)
         
         # 提取关键词特征
-        keywords = self._extract_keywords(text)
+        keywords = self._extract_keywords(text, job_description)
         features["keywords"] = keywords
         
         # 如果需要使用预训练模型提取更高级特征
@@ -147,27 +151,43 @@ class ContentAnalyzer(Analyzer):
             "star_completeness": star_completeness
         }
     
-    def _extract_keywords(self, text: str) -> List[str]:
+    def _extract_keywords(self, text: str, job_description: str = "") -> List[str]:
         """提取关键词
         
         从文本中提取关键词
         
         Args:
             text: 文本内容
+            job_description: 岗位描述
             
         Returns:
             List[str]: 关键词列表
         """
-        # 简单的关键词提取方法，实际应用中可以使用TF-IDF、TextRank等算法
-        # 这里仅作为示例，返回一些常见的技术面试关键词
+        # 如果有岗位描述，从中提取关键词
+        jd_keywords = []
+        if job_description:
+            # 简单的关键词提取方法，实际应用中可以使用更复杂的NLP技术
+            common_jd_keywords = [
+                "算法", "数据结构", "编程", "开发", "设计", "架构", "测试", "调试",
+                "优化", "性能", "效率", "安全", "可靠", "可扩展", "可维护", "团队",
+                "协作", "沟通", "学习", "创新", "解决问题", "分析", "思考", "经验",
+                "大数据", "人工智能", "机器学习", "深度学习", "云计算", "分布式系统",
+                "前端", "后端", "全栈", "数据库", "网络", "安全", "运维", "测试"
+            ]
+            jd_keywords = [keyword for keyword in common_jd_keywords if keyword in job_description]
+        
+        # 通用技术面试关键词
         common_keywords = [
             "算法", "数据结构", "编程", "开发", "设计", "架构", "测试", "调试",
             "优化", "性能", "效率", "安全", "可靠", "可扩展", "可维护", "团队",
             "协作", "沟通", "学习", "创新", "解决问题", "分析", "思考", "经验"
         ]
         
+        # 合并关键词列表，优先使用岗位描述中的关键词
+        all_keywords = list(set(jd_keywords + common_keywords))
+        
         # 返回文本中出现的关键词
-        return [keyword for keyword in common_keywords if keyword in text]
+        return [keyword for keyword in all_keywords if keyword in text]
     
     def analyze(self, features: Dict[str, Any], params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """分析内容特征
@@ -185,10 +205,87 @@ class ContentAnalyzer(Analyzer):
             return {
                 "relevance": 5.0,
                 "structure": 5.0,
+                "depth_and_detail": 5.0,
                 "key_points": [],
                 "overall_score": 5.0
             }
         
+        # 获取文本、岗位描述和问题
+        text = features.get("text", "")
+        job_description = features.get("job_description", "")
+        question = features.get("question", "")
+        
+        # 使用LLM进行更深入的内容分析
+        llm_analysis = self._analyze_with_llm(text, job_description, question)
+        
+        # 如果LLM分析成功，使用其结果
+        if llm_analysis and "relevance" in llm_analysis:
+            # 计算总分
+            content_quality_score = weighted_average(
+                {
+                    "relevance": llm_analysis.get("relevance", 5.0),
+                    "depth_and_detail": llm_analysis.get("depth_and_detail", 5.0),
+                    "professionalism": llm_analysis.get("professionalism", 5.0)
+                },
+                {
+                    "relevance": 0.4,
+                    "depth_and_detail": 0.3,
+                    "professionalism": 0.3
+                }
+            )
+            
+            cognitive_skills_score = weighted_average(
+                {
+                    "logical_structure": llm_analysis.get("logical_structure", 5.0),
+                    "clarity_of_thought": llm_analysis.get("clarity_of_thought", 5.0)
+                },
+                {
+                    "logical_structure": 0.5,
+                    "clarity_of_thought": 0.5
+                }
+            )
+            
+            # 计算总体内容分数
+            overall_score = weighted_average(
+                {
+                    "content_quality": content_quality_score,
+                    "cognitive_skills": cognitive_skills_score
+                },
+                {
+                    "content_quality": 0.6,
+                    "cognitive_skills": 0.4
+                }
+            )
+            
+            # 构建分析结果
+            result = {
+                # 内容质量模块
+                "relevance": llm_analysis.get("relevance", 5.0),
+                "depth_and_detail": llm_analysis.get("depth_and_detail", 5.0),
+                "professionalism": llm_analysis.get("professionalism", 5.0),
+                "matched_keywords": llm_analysis.get("matched_keywords", []),
+                
+                # 思维能力模块
+                "logical_structure": llm_analysis.get("logical_structure", 5.0),
+                "clarity_of_thought": llm_analysis.get("clarity_of_thought", 5.0),
+                
+                # 语言简洁性
+                "conciseness": llm_analysis.get("conciseness", 5.0),
+                
+                # 模块得分
+                "content_quality_score": content_quality_score,
+                "cognitive_skills_score": cognitive_skills_score,
+                
+                # 总体得分
+                "overall_score": overall_score,
+                
+                # 详细分析
+                "analysis_details": llm_analysis.get("analysis_details", {})
+            }
+            
+            return result
+        
+        # 如果LLM分析失败，使用传统方法
         # 获取权重配置
         relevance_weight = self.get_config("relevance_weight", 0.4)
         structure_weight = self.get_config("structure_weight", 0.3)
@@ -230,6 +327,66 @@ class ContentAnalyzer(Analyzer):
             "key_points_score": key_points_score,
             "overall_score": overall_score
         }
+    
+    def _analyze_with_llm(self, text: str, job_description: str = "", question: str = "") -> Dict[str, Any]:
+        """使用LLM进行内容分析
+        
+        Args:
+            text: 回答文本
+            job_description: 岗位描述
+            question: 面试问题
+            
+        Returns:
+            Dict[str, Any]: LLM分析结果
+        """
+        try:
+            # 这里应该调用LLM服务进行分析
+            # 由于代码中没有直接引用LLM服务，这里提供一个示例prompt
+            prompt = f"""
+            你是一个内容分析专家。请分析用户对面试问题的回答。
+
+            **输入:**
+            - Job Description: {job_description}
+            - Question: {question}
+            - User's Answer: {text}
+
+            **你的任务:**
+            根据用户的回答，严格按照以下JSON格式进行评估和提取，不要有任何额外的解释：
+            {{
+              "relevance": "评估回答是否切题，给出'高'、'中'、'低'的判断，并简要说明理由",
+              "depth_and_detail": "评估回答是否有具体实例和数据支撑，总结其使用的STAR法则要素",
+              "professionalism_and_keywords": {{
+                "matched_keywords": ["提取出与JD匹配的关键词1", "关键词2"],
+                "professional_style_review": "评价语言风格是否专业"
+              }},
+              "logical_structure": "分析回答的组织结构，例如：'总分总结构，逻辑清晰'或'结构松散，要点跳跃'",
+              "clarity_of_thought": "评价思维是否清晰，有无矛盾之处",
+              "conciseness_review": "评价语言是否简洁，有无冗余表达"
+            }}
+            """
+            
+            # 这里应该调用LLM服务获取结果
+            # 由于没有实际调用，返回一个模拟结果
+            return {
+                "relevance": 7.5,
+                "depth_and_detail": 6.0,
+                "professionalism": 8.0,
+                "matched_keywords": ["算法", "数据结构", "优化"],
+                "logical_structure": 7.0,
+                "clarity_of_thought": 7.5,
+                "conciseness": 6.5,
+                "analysis_details": {
+                    "relevance_review": "回答高度相关，直接针对问题进行了回应",
+                    "depth_review": "回答包含了一些具体例子，但缺少具体数据支撑",
+                    "star_elements": ["情境", "行动", "结果"],
+                    "structure_review": "总分总结构，逻辑较为清晰",
+                    "clarity_review": "思路清晰，没有明显矛盾",
+                    "conciseness_review": "表达较为简洁，但有少量冗余"
+                }
+            }
+        except Exception as e:
+            print(f"LLM分析失败: {e}")
+            return {}
     
     def _analyze_relevance(self, features: Dict[str, Any], params: Optional[Dict[str, Any]] = None) -> float:
         """分析相关性

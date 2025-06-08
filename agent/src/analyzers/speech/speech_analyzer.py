@@ -102,9 +102,17 @@ class SpeechAnalyzer(Analyzer):
             xunfei_features = self._extract_xunfei_features(audio_data)
             features.update(xunfei_features)
             
+            # 获取转录文本（如果可能）
+            transcript = ""
+            if self.use_xunfei and self.xunfei_service:
+                try:
+                    transcript = self.xunfei_service.speech_recognition(audio_data)
+                except Exception as e:
+                    logger.error(f"语音识别失败: {e}")
+            
             # 提取基本音频特征
             try:
-                basic_features = AudioFeatureExtractor.extract_from_file(file_path)
+                basic_features = AudioFeatureExtractor.extract_from_file(file_path, transcript)
                 features.update(basic_features)
             except Exception as e:
                 logger.error(f"提取基本音频特征失败: {e}")
@@ -125,20 +133,20 @@ class SpeechAnalyzer(Analyzer):
             Dict[str, float]: 分析权重
         """
         # 获取权重配置
-        clarity_weight = self.get_config("clarity_weight", 0.3)
+        fluency_weight = self.get_config("fluency_weight", 0.3)
         pace_weight = self.get_config("pace_weight", 0.3)
-        emotion_weight = self.get_config("emotion_weight", 0.4)
+        vocal_energy_weight = self.get_config("vocal_energy_weight", 0.4)
         
         # 如果提供了参数，覆盖默认权重
         if params:
-            clarity_weight = params.get("clarity_weight", clarity_weight)
+            fluency_weight = params.get("fluency_weight", fluency_weight)
             pace_weight = params.get("pace_weight", pace_weight)
-            emotion_weight = params.get("emotion_weight", emotion_weight)
+            vocal_energy_weight = params.get("vocal_energy_weight", vocal_energy_weight)
         
         return {
-            "clarity": clarity_weight,
+            "fluency": fluency_weight,
             "pace": pace_weight,
-            "emotion": emotion_weight
+            "vocal_energy": vocal_energy_weight
         }
     
     def analyze(self, features: Dict[str, Any], params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -156,8 +164,9 @@ class SpeechAnalyzer(Analyzer):
         if not features:
             logger.warning("没有可用的语音特征进行分析，返回默认结果")
             return {
-                "clarity": 5.0,
+                "fluency": 5.0,
                 "pace": 5.0,
+                "vocal_energy": 5.0,
                 "emotion": "中性",
                 "emotion_score": 5.0,
                 "overall_score": 5.0
@@ -166,92 +175,97 @@ class SpeechAnalyzer(Analyzer):
         # 获取分析权重
         weights = self._get_analysis_weights(params)
         
-        # 分析清晰度
-        clarity = self._analyze_clarity(features)
+        # 分析流畅度
+        fluency, fluency_details = self._analyze_fluency(features)
         
         # 分析语速
-        pace = self._analyze_pace(features)
+        pace, pace_details = self._analyze_pace(features)
+        
+        # 分析声音能量
+        vocal_energy, vocal_energy_details = self._analyze_vocal_energy(features)
         
         # 分析情感
         emotion, emotion_score = self._analyze_emotion(features)
         
         # 计算总分
         scores = {
-            "clarity": clarity,
+            "fluency": fluency,
             "pace": pace,
-            "emotion": emotion_score
+            "vocal_energy": vocal_energy
         }
         
         overall_score = weighted_average(scores, weights)
         
         return {
-            "clarity": clarity,
+            "fluency": fluency,
+            "fluency_details": fluency_details,
             "pace": pace,
+            "pace_details": pace_details,
+            "vocal_energy": vocal_energy,
+            "vocal_energy_details": vocal_energy_details,
             "emotion": emotion,
             "emotion_score": emotion_score,
             "overall_score": overall_score
         }
     
-    def _analyze_clarity_with_xunfei(self, xunfei_assessment: Dict[str, Any]) -> float:
-        """使用讯飞评测结果分析清晰度
-        
-        Args:
-            xunfei_assessment: 讯飞评测结果
-            
-        Returns:
-            float: 清晰度评分
-        """
-        # 讯飞评测结果通常是百分制，转换为10分制
-        clarity = min(10.0, max(0.0, xunfei_assessment.get("clarity", 50) / 10))
-        return clarity
-    
-    def _analyze_clarity_with_basic_features(self, features: Dict[str, Any]) -> float:
-        """使用基本音频特征分析清晰度
-        
-        Args:
-            features: 基本音频特征
-            
-        Returns:
-            float: 清晰度评分
-        """
-        spectral_centroid = features.get("spectral_centroid", 1000)
-        rms = features.get("rms", 0.1)
-        
-        # 简单算法：根据频谱质心和RMS能量估计清晰度
-        # 频谱质心越高，通常表示声音越清晰
-        # RMS能量越高，通常表示声音越响亮
-        clarity = min(10.0, max(0.0, 5.0 + spectral_centroid / 2000 + rms * 10))
-        return clarity
-    
-    def _analyze_clarity(self, features: Dict[str, Any]) -> float:
-        """分析清晰度
+    def _analyze_fluency(self, features: Dict[str, Any]) -> Tuple[float, Dict[str, Any]]:
+        """分析流畅度
         
         Args:
             features: 语音特征
             
         Returns:
-            float: 清晰度评分（0-10）
+            Tuple[float, Dict[str, Any]]: 流畅度评分和详情
         """
-        # 获取讯飞API评测结果
-        xunfei_assessment = features.get("xunfei_assessment", {})
+        # 获取填充词数量
+        filler_words_count = features.get("filler_words_count", 0)
         
-        # 使用讯飞评测结果计算清晰度（如果有）
-        if xunfei_assessment and "clarity" in xunfei_assessment:
-            clarity = self._analyze_clarity_with_xunfei(xunfei_assessment)
+        # 获取不自然停顿
+        pauses = features.get("pauses", [])
+        unnatural_pauses_count = len(pauses)
+        
+        # 计算流畅度评分
+        # 填充词越少，评分越高
+        if filler_words_count <= 2:
+            filler_score = 9.0
+        elif filler_words_count <= 5:
+            filler_score = 7.0
+        elif filler_words_count <= 10:
+            filler_score = 5.0
         else:
-            # 使用备选方法计算清晰度
-            clarity = self._analyze_clarity_with_basic_features(features)
+            filler_score = 3.0
         
-        return normalize_score(clarity)
+        # 不自然停顿越少，评分越高
+        if unnatural_pauses_count == 0:
+            pause_score = 9.0
+        elif unnatural_pauses_count <= 2:
+            pause_score = 7.0
+        elif unnatural_pauses_count <= 5:
+            pause_score = 5.0
+        else:
+            pause_score = 3.0
+        
+        # 综合评分
+        fluency = (filler_score + pause_score) / 2
+        
+        # 流畅度详情
+        fluency_details = {
+            "filler_words_count": filler_words_count,
+            "unnatural_pauses_count": unnatural_pauses_count,
+            "filler_score": filler_score,
+            "pause_score": pause_score
+        }
+        
+        return normalize_score(fluency), fluency_details
     
-    def _analyze_pace_with_xunfei(self, xunfei_assessment: Dict[str, Any]) -> float:
+    def _analyze_pace_with_xunfei(self, xunfei_assessment: Dict[str, Any]) -> Tuple[float, Dict[str, Any]]:
         """使用讯飞评测结果分析语速
         
         Args:
             xunfei_assessment: 讯飞评测结果
             
         Returns:
-            float: 语速评分
+            Tuple[float, Dict[str, Any]]: 语速评分和详情
         """
         # 假设讯飞返回的语速是一个0-100的分数，其中50表示标准语速
         xunfei_speed = xunfei_assessment.get("speed", 50)
@@ -260,60 +274,142 @@ class SpeechAnalyzer(Analyzer):
         if xunfei_speed < 50:
             # 语速过慢，分数越低
             pace = 5.0 * (xunfei_speed / 50)
+            pace_category = "过慢"
         elif xunfei_speed > 50:
             # 语速过快，分数越低
             pace = 10.0 - 5.0 * ((xunfei_speed - 50) / 50)
+            pace_category = "过快"
         else:
             pace = 5.0
+            pace_category = "适中"
         
-        return pace
+        # 语速详情
+        pace_details = {
+            "xunfei_speed": xunfei_speed,
+            "pace_category": pace_category,
+            "words_per_minute": xunfei_assessment.get("words_per_minute", 0)
+        }
+        
+        return pace, pace_details
     
-    def _analyze_pace_with_basic_features(self, features: Dict[str, Any]) -> float:
+    def _analyze_pace_with_basic_features(self, features: Dict[str, Any]) -> Tuple[float, Dict[str, Any]]:
         """使用基本音频特征分析语速
         
         Args:
             features: 基本音频特征
             
         Returns:
-            float: 语速评分
+            Tuple[float, Dict[str, Any]]: 语速评分和详情
         """
         tempo = features.get("tempo", 120)
         zcr = features.get("zero_crossing_rate", 0.1)
+        
+        # 估计每分钟字数（基于节奏和过零率）
+        estimated_wpm = tempo * 1.5
         
         # 简单算法：根据节奏和过零率估计语速
         # 标准语速约为120-130 BPM
         if tempo < 100:
             # 语速过慢
             pace = 5.0 * (tempo / 100)
+            pace_category = "过慢"
         elif tempo > 140:
             # 语速过快
             pace = 10.0 - 5.0 * ((tempo - 140) / 60)
+            pace_category = "过快"
         else:
             # 语速适中，给予高分
             pace = 7.5 + 2.5 * (1 - abs(tempo - 120) / 20)
+            pace_category = "适中"
         
-        return pace
+        # 语速详情
+        pace_details = {
+            "tempo": tempo,
+            "zero_crossing_rate": zcr,
+            "pace_category": pace_category,
+            "estimated_words_per_minute": estimated_wpm
+        }
+        
+        return pace, pace_details
     
-    def _analyze_pace(self, features: Dict[str, Any]) -> float:
+    def _analyze_pace(self, features: Dict[str, Any]) -> Tuple[float, Dict[str, Any]]:
         """分析语速
         
         Args:
             features: 语音特征
             
         Returns:
-            float: 语速评分（0-10，5分为最佳）
+            Tuple[float, Dict[str, Any]]: 语速评分和详情
         """
         # 获取讯飞API评测结果
         xunfei_assessment = features.get("xunfei_assessment", {})
         
         # 使用讯飞评测结果计算语速（如果有）
         if xunfei_assessment and "speed" in xunfei_assessment:
-            pace = self._analyze_pace_with_xunfei(xunfei_assessment)
+            pace, pace_details = self._analyze_pace_with_xunfei(xunfei_assessment)
         else:
             # 使用备选方法计算语速
-            pace = self._analyze_pace_with_basic_features(features)
+            pace, pace_details = self._analyze_pace_with_basic_features(features)
         
-        return normalize_score(pace)
+        return normalize_score(pace), pace_details
+    
+    def _analyze_vocal_energy(self, features: Dict[str, Any]) -> Tuple[float, Dict[str, Any]]:
+        """分析声音能量
+        
+        Args:
+            features: 语音特征
+            
+        Returns:
+            Tuple[float, Dict[str, Any]]: 声音能量评分和详情
+        """
+        # 获取音高标准差
+        pitch_std_dev = features.get("pitch_std_dev", 10.0)
+        
+        # 获取RMS能量
+        rms = features.get("rms", 0.1)
+        
+        # 基于音高变化范围评估声音能量
+        if pitch_std_dev > 20:
+            # 音调变化丰富，声音富有活力
+            pitch_score = 9.0
+            pitch_category = "富有活力"
+        elif pitch_std_dev > 10:
+            # 音调变化适中
+            pitch_score = 7.0
+            pitch_category = "平稳有变化"
+        else:
+            # 音调变化较小，声音较为单调
+            pitch_score = 5.0
+            pitch_category = "较为单调"
+        
+        # 基于音量评估声音能量
+        if 0.05 <= rms <= 0.2:
+            # 音量适中
+            volume_score = 8.0
+            volume_category = "适中"
+        elif rms > 0.2:
+            # 音量较大
+            volume_score = 6.0
+            volume_category = "较大"
+        else:
+            # 音量较小
+            volume_score = 4.0
+            volume_category = "较小"
+        
+        # 综合评分
+        vocal_energy = (pitch_score * 0.6 + volume_score * 0.4)
+        
+        # 声音能量详情
+        vocal_energy_details = {
+            "pitch_std_dev": pitch_std_dev,
+            "pitch_category": pitch_category,
+            "rms": rms,
+            "volume_category": volume_category,
+            "pitch_score": pitch_score,
+            "volume_score": volume_score
+        }
+        
+        return normalize_score(vocal_energy), vocal_energy_details
     
     def _analyze_emotion_with_xunfei(self, xunfei_emotion: Dict[str, Any]) -> Tuple[str, float]:
         """使用讯飞情感分析结果分析情感
