@@ -16,5 +16,5 @@ __pycache__
 frontend/node_modules/.bin/
 frontend/node_modules/**/*.node
 node_modules
-
+*.log
 *.mp3
