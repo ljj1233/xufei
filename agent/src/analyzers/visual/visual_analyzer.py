@@ -9,11 +9,14 @@ from collections import deque
 import logging
 from datetime import datetime
 import json
+import asyncio
 
-from ...core.analyzer import Analyzer
+from ..base.analyzer import Analyzer
 from ...core.system.config import AgentConfig
-from ...core.utils import normalize_score, weighted_average
+from ...utils.utils import normalize_score, weighted_average
+from ...services.content_filter_service import ContentFilterService
 
+logger = logging.getLogger(__name__)
 
 class VisualAnalyzer(Analyzer):
     """视觉分析器
@@ -750,3 +753,176 @@ class VisualAnalyzer(Analyzer):
         self.analysis_history.clear()
         self.last_analysis_time = 0
         self.face_tracking.clear()
+
+    async def analyze(self, video_file: str) -> Dict[str, Any]:
+        """分析视频文件
+        
+        Args:
+            video_file: 视频文件路径
+            
+        Returns:
+            Dict[str, Any]: 分析结果
+        """
+        try:
+            # 提取特征
+            features = await self.extract_features(video_file)
+            
+            # 分析特征
+            result = {
+                "facial_expression": await self.analyze_facial_expression(features),
+                "eye_contact": await self.analyze_eye_contact(features),
+                "body_language": await self.analyze_body_language(features)
+            }
+            
+            return result
+        except Exception as e:
+            logger.exception(f"视觉分析失败: {str(e)}")
+            return {
+                "error": str(e),
+                "facial_expression": {"score": 0, "feedback": "分析失败"},
+                "eye_contact": {"score": 0, "feedback": "分析失败"},
+                "body_language": {"score": 0, "feedback": "分析失败"}
+            }
+
+    async def extract_features(self, video_file: str) -> Dict[str, Any]:
+        """提取特征
+        
+        Args:
+            video_file: 视频文件路径
+            
+        Returns:
+            Dict[str, Any]: 提取的特征
+        """
+        # 模拟处理时间
+        await asyncio.sleep(0.1)
+        
+        # 简单实现，返回模拟特征
+        return {
+            "duration": 120.0,  # 120秒
+            "frame_count": 3600,  # 30fps x 120秒
+            "face_detected_ratio": 0.95,  # 95%的帧检测到人脸
+            "smile_ratio": 0.6,  # 60%的时间在微笑
+            "eye_contact_ratio": 0.8,  # 80%的时间有眼神接触
+            "posture_changes": 5,  # 5次姿势变化
+            "hand_gestures": 12  # 12次手势
+        }
+
+    async def analyze_facial_expression(self, features: Dict[str, Any]) -> Dict[str, Any]:
+        """分析面部表情
+        
+        Args:
+            features: 提取的特征
+            
+        Returns:
+            Dict[str, Any]: 分析结果
+        """
+        face_detected_ratio = features.get("face_detected_ratio", 0)
+        smile_ratio = features.get("smile_ratio", 0)
+        
+        if face_detected_ratio < 0.5:
+            score = 60
+            feedback = "面部表情难以识别，建议面对摄像头"
+        elif smile_ratio > 0.8:
+            score = 85
+            feedback = "面部表情自然，微笑适度"
+        elif smile_ratio > 0.5:
+            score = 80
+            feedback = "面部表情较为自然，可以适当增加微笑"
+        elif smile_ratio > 0.2:
+            score = 70
+            feedback = "面部表情偏严肃，建议适当展示微笑"
+        else:
+            score = 65
+            feedback = "面部表情过于严肃，建议增加表情变化"
+        
+        return {
+            "score": score,
+            "feedback": feedback
+        }
+
+    async def analyze_eye_contact(self, features: Dict[str, Any]) -> Dict[str, Any]:
+        """分析眼神接触
+        
+        Args:
+            features: 提取的特征
+            
+        Returns:
+            Dict[str, Any]: 分析结果
+        """
+        eye_contact_ratio = features.get("eye_contact_ratio", 0)
+        
+        if eye_contact_ratio > 0.9:
+            score = 90
+            feedback = "眼神接触良好，展示自信"
+        elif eye_contact_ratio > 0.7:
+            score = 85
+            feedback = "眼神接触良好，偶有游离"
+        elif eye_contact_ratio > 0.5:
+            score = 75
+            feedback = "眼神接触一般，可以增加与镜头的交流"
+        elif eye_contact_ratio > 0.3:
+            score = 65
+            feedback = "眼神接触较少，建议增加与镜头的交流"
+        else:
+            score = 60
+            feedback = "几乎没有眼神接触，建议直视镜头"
+        
+        return {
+            "score": score,
+            "feedback": feedback
+        }
+
+    async def analyze_body_language(self, features: Dict[str, Any]) -> Dict[str, Any]:
+        """分析肢体语言
+        
+        Args:
+            features: 提取的特征
+            
+        Returns:
+            Dict[str, Any]: 分析结果
+        """
+        posture_changes = features.get("posture_changes", 0)
+        hand_gestures = features.get("hand_gestures", 0)
+        
+        # 分析姿势变化
+        if posture_changes > 15:
+            posture_score = 70
+            posture_feedback = "姿势变化过于频繁，显得不够稳重"
+        elif posture_changes > 10:
+            posture_score = 75
+            posture_feedback = "姿势变化较多，建议保持稳定"
+        elif posture_changes > 5:
+            posture_score = 85
+            posture_feedback = "姿势自然，变化适度"
+        elif posture_changes > 1:
+            posture_score = 80
+            posture_feedback = "姿势较为稳定，可以适当增加变化"
+        else:
+            posture_score = 70
+            posture_feedback = "姿势过于僵硬，建议适当放松"
+        
+        # 分析手势
+        if hand_gestures > 20:
+            gesture_score = 70
+            gesture_feedback = "手势过多，可能分散注意力"
+        elif hand_gestures > 10:
+            gesture_score = 85
+            gesture_feedback = "手势自然，辅助表达"
+        elif hand_gestures > 5:
+            gesture_score = 80
+            gesture_feedback = "手势适度，表达清晰"
+        elif hand_gestures > 1:
+            gesture_score = 75
+            gesture_feedback = "手势较少，可以适当增加"
+        else:
+            gesture_score = 65
+            gesture_feedback = "几乎没有手势，建议适当使用手势辅助表达"
+        
+        # 综合评分
+        score = (posture_score + gesture_score) / 2
+        feedback = f"{posture_feedback}；{gesture_feedback}"
+        
+        return {
+            "score": score,
+            "feedback": feedback
+        }

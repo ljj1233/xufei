@@ -3,7 +3,7 @@
 from typing import Dict, Any, Optional
 from abc import ABC, abstractmethod
 
-from .config import AgentConfig
+from ...core.system.config import AgentConfig
 
 
 class Analyzer(ABC):

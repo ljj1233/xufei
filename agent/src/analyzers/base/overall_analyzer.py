@@ -2,9 +2,9 @@
 
 from typing import Dict, Any, Optional, List
 
-from ..core.analyzer import Analyzer
-from ..core.config import AgentConfig
-from ..core.utils import normalize_score, weighted_average
+from .analyzer import Analyzer
+from ...core.system.config import AgentConfig
+from ...utils.utils import normalize_score, weighted_average
 
 
 class OverallAnalyzer(Analyzer):

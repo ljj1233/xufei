@@ -73,19 +73,8 @@ class OpenAIService:
             
             # 处理流式响应
             if stream:
-                collected_content = []
-                async for chunk in response:
-                    if chunk.choices and chunk.choices[0].delta.content:
-                        content = chunk.choices[0].delta.content
-                        collected_content.append(content)
-                        yield content
-                
-                # 返回完整内容
-                return {
-                    "content": "".join(collected_content),
-                    "role": "assistant",
-                    "status": "success"
-                }
+                # 改为普通方法返回流式生成器
+                return self._handle_streaming_response(response)
             else:
                 # 处理非流式响应
                 if response.choices and len(response.choices) > 0:
@@ -116,6 +105,29 @@ class OpenAIService:
                 "status": "error",
                 "error": str(e)
             }
+    
+    async def _handle_streaming_response(self, response):
+        """处理流式响应
+        
+        Args:
+            response: 流式响应对象
+            
+        Returns:
+            Dict: 完整内容
+        """
+        collected_content = []
+        async for chunk in response:
+            if chunk.choices and chunk.choices[0].delta.content:
+                content = chunk.choices[0].delta.content
+                collected_content.append(content)
+                # 不在这里yield，这不是生成器函数
+        
+        # 返回完整内容
+        return {
+            "content": "".join(collected_content),
+            "role": "assistant",
+            "status": "success"
+        }
     
     async def function_calling(self, 
                               messages: List[Dict[str, str]], 

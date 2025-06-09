@@ -71,6 +71,30 @@ class AgentConfig:
                     "iat_url": "https://api.xfyun.cn/v1/service/v1/iat",
                     "emotion_url": "https://api.xfyun.cn/v1/service/v1/emotion"
                 }
+            },
+            
+            # 数据库配置
+            "db": {
+                "vector": {
+                    "db_type": "faiss",
+                    "path": "./vector_db",
+                    "dimension": 768
+                }
+            },
+            
+            # 检索器配置
+            "retriever": {
+                "hybrid": {
+                    "max_results": 10,
+                    "vector_weight": 0.7,
+                    "keyword_weight": 0.3
+                }
+            },
+            
+            # MCP配置
+            "mcp": {
+                "api_endpoint": "http://localhost:3000/api",
+                "api_key": ""
             }
         }
         
@@ -199,7 +223,101 @@ class AgentConfig:
             # 确保目录存在
             os.makedirs(os.path.dirname(config_path), exist_ok=True)
             
+            # 保存配置
             with open(config_path, 'w', encoding='utf-8') as f:
-                json.dump(self.config, f, indent=4, ensure_ascii=False)
+                json.dump(self.config, f, ensure_ascii=False, indent=4)
         except Exception as e:
             print(f"保存配置文件失败: {e}")
+    
+    def get_config(self, key: str, default: Any = None) -> Any:
+        """获取通用配置值
+        
+        Args:
+            key: 配置键名
+            default: 默认值（如果配置不存在）
+            
+        Returns:
+            Any: 配置值
+        """
+        # 首先在顶层查找
+        if key in self.config:
+            return self.config[key]
+        
+        # 然后在general部分查找
+        return self.config.get("general", {}).get(key, default)
+    
+    def get_service_config(self, service: str, key: str, default: Any = None) -> Any:
+        """获取服务配置值
+        
+        Args:
+            service: 服务名称
+            key: 配置键名
+            default: 默认值（如果配置不存在）
+            
+        Returns:
+            Any: 配置值
+        """
+        return self.config.get("services", {}).get(service, {}).get(key, default)
+    
+    def get_db_config(self, db_type: str, key: str, default: Any = None) -> Any:
+        """获取数据库配置
+        
+        Args:
+            db_type: 数据库类型
+            key: 配置键
+            default: 默认值
+            
+        Returns:
+            Any: 配置值
+        """
+        return self.config.get("db", {}).get(db_type, {}).get(key, default)
+    
+    def get_retriever_config(self, retriever_type: str, key: str, default: Any = None) -> Any:
+        """获取检索器配置值
+        
+        Args:
+            retriever_type: 检索器类型
+            key: 配置键名
+            default: 默认值（如果配置不存在）
+            
+        Returns:
+            Any: 配置值
+        """
+        return self.config.get("retriever", {}).get(retriever_type, {}).get(key, default)
+    
+    def set_config(self, key: str, value: Any):
+        """设置配置值（别名方法，用于测试兼容）
+        
+        Args:
+            key: 配置键名
+            value: 配置值
+        """
+        # 自动将配置放入对应部分
+        if key.endswith("_weight") and "weight" in key:
+            if "clarity" in key or "pace" in key or "emotion" in key:
+                self.set("speech", key, value)
+            elif "expression" in key or "eye_contact" in key or "body_language" in key:
+                self.set("visual", key, value)
+            elif "relevance" in key or "structure" in key or "key_points" in key:
+                self.set("content", key, value)
+            else:
+                self.set("general", key, value)
+        elif key == "use_xunfei":
+            self.set("speech", key, value)
+        else:
+            self.set("general", key, value)
+    
+    def get_learning_config(self, key: str, default: Any = None) -> Any:
+        """获取学习路径相关配置
+        
+        Args:
+            key: 配置键
+            default: 默认值
+            
+        Returns:
+            Any: 配置值
+        """
+        if "learning_path" not in self.config:
+            return default
+            
+        return self.config["learning_path"].get(key, default)

@@ -8,7 +8,7 @@ import hmac
 import json
 import requests
 
-from ..core.config import AgentConfig
+from ..core.system.config import AgentConfig
 
 
 class XunFeiService:

@@ -342,18 +342,18 @@ class VectorDatabase:
             query_embedding = await self.create_embedding(query)
             
             if isinstance(self._index, str) and self._index == "memory":
-                # 使用内存索引进行搜索
-                return self._memory_search(query_embedding, top_k, score_threshold)
+                # 使用内存索引进行搜索 - 确保这是异步的
+                return await self._memory_search_async(query_embedding, top_k, score_threshold)
             else:
-                # 使用FAISS索引进行搜索
-                return self._faiss_search(query_embedding, top_k, score_threshold)
+                # 使用FAISS索引进行搜索 - 确保这是异步的
+                return await self._faiss_search_async(query_embedding, top_k, score_threshold)
                 
         except Exception as e:
             logger.error(f"搜索失败: {e}")
             return []
     
-    def _memory_search(self, query_embedding: np.ndarray, top_k: int, score_threshold: float) -> List[Dict[str, Any]]:
-        """使用内存索引进行搜索
+    async def _memory_search_async(self, query_embedding: np.ndarray, top_k: int, score_threshold: float) -> List[Dict[str, Any]]:
+        """异步使用内存索引进行搜索
         
         Args:
             query_embedding: 查询嵌入
@@ -363,83 +363,99 @@ class VectorDatabase:
         Returns:
             List[Dict[str, Any]]: 搜索结果列表
         """
-        scores = {}
-        
-        for doc_id, embedding in self._embeddings.items():
-            if self.distance_metric == "cosine":
-                # 计算余弦相似度
-                score = np.dot(query_embedding, embedding)
-            else:
-                # 计算欧氏距离，并转换为相似度分数
-                dist = np.linalg.norm(query_embedding - embedding)
-                score = 1.0 / (1.0 + dist)
+        # 封装同步搜索代码到异步函数中
+        def _sync_search():
+            scores = {}
             
-            scores[doc_id] = score
-        
-        # 按分数排序
-        sorted_scores = sorted(scores.items(), key=lambda x: x[1], reverse=True)
-        
-        # 过滤低于阈值的结果
-        filtered_scores = [(doc_id, score) for doc_id, score in sorted_scores if score >= score_threshold]
-        
-        # 限制结果数量
-        results = []
-        for doc_id, score in filtered_scores[:top_k]:
-            results.append({
-                "text": self._documents[doc_id],
-                "metadata": self._metadata[doc_id],
-                "score": float(score),
-                "source": "vector"
-            })
-        
-        return results
-    
-    def _faiss_search(self, query_embedding: np.ndarray, top_k: int, score_threshold: float) -> List[Dict[str, Any]]:
-        """使用FAISS索引进行搜索
-        
-        Args:
-            query_embedding: 查询嵌入
-            top_k: 返回结果数量
-            score_threshold: 相似度阈值
-            
-        Returns:
-            List[Dict[str, Any]]: 搜索结果列表
-        """
-        import faiss
-        
-        # 确保查询嵌入是2D数组
-        query_array = query_embedding.reshape(1, -1).astype(np.float32)
-        
-        # 如果使用余弦相似度，确保向量已归一化
-        if self.distance_metric == "cosine":
-            faiss.normalize_L2(query_array)
-        
-        # 执行搜索
-        distances, indices = self._index.search(query_array, min(top_k, len(self._documents)))
-        
-        # 转换结果
-        doc_ids = list(self._embeddings.keys())
-        results = []
-        
-        for i, idx in enumerate(indices[0]):
-            if idx < 0 or idx >= len(doc_ids):
-                continue
+            for doc_id, embedding in self._embeddings.items():
+                if self.distance_metric == "cosine":
+                    # 计算余弦相似度
+                    score = np.dot(query_embedding, embedding)
+                else:
+                    # 计算欧氏距离，并转换为相似度分数
+                    dist = np.linalg.norm(query_embedding - embedding)
+                    score = 1.0 / (1.0 + dist)
                 
-            doc_id = doc_ids[idx]
+                scores[doc_id] = score
             
-            if self.distance_metric == "cosine":
-                # FAISS余弦相似度范围为[-1, 1]，转换为[0, 1]
-                score = float((distances[0][i] + 1) / 2)
-            else:
-                # 欧氏距离转换为相似度分数
-                score = float(1.0 / (1.0 + distances[0][i]))
+            # 按分数排序
+            sorted_scores = sorted(scores.items(), key=lambda x: x[1], reverse=True)
             
-            if score >= score_threshold:
+            # 过滤低于阈值的结果
+            filtered_scores = [(doc_id, score) for doc_id, score in sorted_scores if score >= score_threshold]
+            
+            # 限制结果数量
+            results = []
+            for doc_id, score in filtered_scores[:top_k]:
                 results.append({
                     "text": self._documents[doc_id],
                     "metadata": self._metadata[doc_id],
-                    "score": score,
+                    "score": float(score),
                     "source": "vector"
                 })
+            
+            return results
         
-        return results 
+        # 在异步运行同步代码
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, _sync_search)
+    
+    async def _faiss_search_async(self, query_embedding: np.ndarray, top_k: int, score_threshold: float) -> List[Dict[str, Any]]:
+        """异步使用FAISS索引进行搜索
+        
+        Args:
+            query_embedding: 查询嵌入
+            top_k: 返回结果数量
+            score_threshold: 相似度阈值
+            
+        Returns:
+            List[Dict[str, Any]]: 搜索结果列表
+        """
+        # 封装同步搜索代码到异步函数中
+        def _sync_search():
+            try:
+                import faiss
+                
+                # 确保查询嵌入是2D数组
+                query_array = query_embedding.reshape(1, -1).astype(np.float32)
+                
+                # 如果使用余弦相似度，确保向量已归一化
+                if self.distance_metric == "cosine":
+                    faiss.normalize_L2(query_array)
+                
+                # 执行搜索
+                distances, indices = self._index.search(query_array, min(top_k, len(self._documents)))
+                
+                # 转换结果
+                doc_ids = list(self._embeddings.keys())
+                results = []
+                
+                for i, idx in enumerate(indices[0]):
+                    if idx < 0 or idx >= len(doc_ids):
+                        continue
+                        
+                    doc_id = doc_ids[idx]
+                    
+                    if self.distance_metric == "cosine":
+                        # FAISS余弦相似度范围为[-1, 1]，转换为[0, 1]
+                        score = float((distances[0][i] + 1) / 2)
+                    else:
+                        # 欧氏距离转换为相似度分数
+                        score = float(1.0 / (1.0 + distances[0][i]))
+                    
+                    if score >= score_threshold:
+                        results.append({
+                            "text": self._documents[doc_id],
+                            "metadata": self._metadata[doc_id],
+                            "score": score,
+                            "source": "vector"
+                        })
+                
+                return results
+            except Exception as e:
+                logger.error(f"FAISS搜索失败: {e}")
+                return []
+        
+        # 在异步运行同步代码
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, _sync_search) 

@@ -300,7 +300,7 @@ class HybridRetriever(Retriever):
         self.vector_retriever = VectorRetriever(config)
         self.keyword_retriever = KeywordRetriever(config)
     
-    async def retrieve(self, query: str, max_results: Optional[int] = None, **kwargs) -> List[Dict[str, Any]]:
+    async def retrieve(self, query: str, max_results: Optional[int] = None, **kwargs) -> Dict[str, Any]:
         """执行混合检索
         
         Args:
@@ -309,7 +309,7 @@ class HybridRetriever(Retriever):
             **kwargs: 其他参数
             
         Returns:
-            List[Dict[str, Any]]: 检索结果列表
+            Dict[str, Any]: 混合检索结果，包含向量检索和MCP检索结果
         """
         # 使用参数或默认值
         limit = max_results or self.max_results
@@ -321,6 +321,17 @@ class HybridRetriever(Retriever):
             vector_results_task = self.vector_retriever.retrieve(query, top_k=limit)
             keyword_results_task = self.keyword_retriever.retrieve(query, max_results=limit)
             
+            # 如果可能，并行执行MCP检索
+            mcp_results = []
+            try:
+                from ..services.mcp_service import MCPService
+                if not hasattr(self, 'mcp_service'):
+                    self.mcp_service = MCPService(self.config)
+                mcp_response = await self.mcp_service.search_nodes(query)
+                mcp_results = mcp_response.get("nodes", [])
+            except Exception as e:
+                logger.warning(f"MCP检索失败: {e}")
+            
             vector_results, keyword_results = await asyncio.gather(
                 vector_results_task,
                 keyword_results_task
@@ -329,14 +340,34 @@ class HybridRetriever(Retriever):
             # 合并和重新排序结果
             merged_results = self._merge_results(vector_results, keyword_results, limit)
             
-            elapsed = time.time() - start_time
-            logger.info(f"混合检索完成, 用时: {elapsed:.2f}s, 结果数量: {len(merged_results)}")
+            # 构建复合结果
+            combined_text = ""
+            for result in merged_results[:min(3, len(merged_results))]:
+                combined_text += result["text"] + " "
             
-            return merged_results
+            for node in mcp_results[:min(3, len(mcp_results))]:
+                if "name" in node and "observations" in node:
+                    combined_text += f"{node['name']}包括"
+                    combined_text += "、".join(node["observations"]) + "。"
+            
+            elapsed = time.time() - start_time
+            logger.info(f"混合检索完成, 用时: {elapsed:.2f}s")
+            
+            return {
+                "vector_results": vector_results,
+                "keyword_results": keyword_results,
+                "mcp_results": mcp_results,
+                "combined_results": combined_text.strip()
+            }
             
         except Exception as e:
             logger.error(f"混合检索失败: {e}")
-            return []
+            return {
+                "vector_results": [],
+                "keyword_results": [],
+                "mcp_results": [],
+                "combined_results": ""
+            }
     
     async def add_documents(self, documents: List[Dict[str, Any]]) -> bool:
         """添加文档到所有检索器

@@ -6,10 +6,10 @@ from unittest.mock import patch, MagicMock, mock_open
 import numpy as np
 from typing import Dict, Any
 
-from agent.analyzers.speech_analyzer import SpeechAnalyzer
-from agent.core.config import AgentConfig
-from agent.services.xunfei_service import XunFeiService
-from agent.analyzers.audio_feature_extractor import AudioFeatureExtractor
+from agent.src.analyzers.speech.speech_analyzer import SpeechAnalyzer
+from agent.src.core.system.config import AgentConfig
+from agent.src.services.xunfei_service import XunFeiService
+from agent.src.analyzers.speech.audio_feature_extractor import AudioFeatureExtractor
 
 
 # 测试数据
@@ -47,7 +47,7 @@ def mock_config():
 @pytest.fixture
 def speech_analyzer(mock_config):
     """创建语音分析器实例"""
-    with patch("agent.analyzers.speech_analyzer.XunFeiService") as mock_xunfei_service_cls:
+    with patch("agent.src.analyzers.speech.speech_analyzer.XunFeiService") as mock_xunfei_service_cls:
         # 配置模拟的讯飞服务
         mock_xunfei_service = MagicMock()
         mock_xunfei_service_cls.return_value = mock_xunfei_service
@@ -80,7 +80,7 @@ def speech_analyzer_no_xunfei(mock_config):
 def test_init(mock_config):
     """测试初始化"""
     # 测试正常初始化
-    with patch("agent.analyzers.speech_analyzer.XunFeiService") as mock_xunfei_service_cls:
+    with patch("agent.src.analyzers.speech.speech_analyzer.XunFeiService") as mock_xunfei_service_cls:
         analyzer = SpeechAnalyzer(config=mock_config)
         assert analyzer.name == "speech_analyzer"
         assert analyzer.analyzer_type == "speech"
@@ -88,7 +88,7 @@ def test_init(mock_config):
         assert analyzer.xunfei_service is not None
     
     # 测试讯飞服务初始化失败的情况
-    with patch("agent.analyzers.speech_analyzer.XunFeiService", side_effect=Exception("初始化失败")):  
+    with patch("agent.src.analyzers.speech.speech_analyzer.XunFeiService", side_effect=Exception("初始化失败")):  
         analyzer = SpeechAnalyzer(config=mock_config)
         assert analyzer.use_xunfei is False
         assert analyzer.xunfei_service is None
@@ -138,7 +138,7 @@ def test_extract_xunfei_features_exception(speech_analyzer):
 def test_extract_features(speech_analyzer):
     """测试提取语音特征"""
     # 模拟AudioFeatureExtractor的方法
-    with patch("agent.analyzers.speech_analyzer.AudioFeatureExtractor") as mock_extractor_cls:
+    with patch("agent.src.analyzers.speech.speech_analyzer.AudioFeatureExtractor") as mock_extractor_cls:
         # 配置模拟的音频特征提取器
         mock_extractor_cls.read_audio_bytes.return_value = MOCK_AUDIO_BYTES
         mock_extractor_cls.extract_from_file.return_value = MOCK_BASIC_FEATURES
@@ -166,7 +166,7 @@ def test_extract_features(speech_analyzer):
 def test_extract_features_exception(speech_analyzer):
     """测试提取语音特征时发生异常"""
     # 模拟AudioFeatureExtractor的方法抛出异常
-    with patch("agent.analyzers.speech_analyzer.AudioFeatureExtractor") as mock_extractor_cls:
+    with patch("agent.src.analyzers.speech.speech_analyzer.AudioFeatureExtractor") as mock_extractor_cls:
         mock_extractor_cls.read_audio_bytes.side_effect = Exception("读取音频失败")
         
         # 调用方法
@@ -397,7 +397,7 @@ def test_analyze_emotion(speech_analyzer):
 def test_speech_to_text(speech_analyzer):
     """测试语音转文本"""
     # 模拟AudioFeatureExtractor的方法
-    with patch("agent.analyzers.speech_analyzer.AudioFeatureExtractor") as mock_extractor_cls:
+    with patch("agent.src.analyzers.speech.speech_analyzer.AudioFeatureExtractor") as mock_extractor_cls:
         # 配置模拟的音频特征提取器
         mock_extractor_cls.read_audio_bytes.return_value = MOCK_AUDIO_BYTES
         
@@ -418,7 +418,7 @@ def test_speech_to_text(speech_analyzer):
 def test_speech_to_text_no_xunfei(speech_analyzer_no_xunfei):
     """测试在讯飞服务不可用时语音转文本"""
     # 模拟AudioFeatureExtractor的方法
-    with patch("agent.analyzers.speech_analyzer.AudioFeatureExtractor") as mock_extractor_cls:
+    with patch("agent.src.analyzers.speech.speech_analyzer.AudioFeatureExtractor") as mock_extractor_cls:
         # 配置模拟的音频特征提取器
         mock_extractor_cls.read_audio_bytes.return_value = MOCK_AUDIO_BYTES
         
@@ -432,7 +432,7 @@ def test_speech_to_text_no_xunfei(speech_analyzer_no_xunfei):
 def test_speech_to_text_exception(speech_analyzer):
     """测试语音转文本时发生异常"""
     # 模拟AudioFeatureExtractor的方法抛出异常
-    with patch("agent.analyzers.speech_analyzer.AudioFeatureExtractor") as mock_extractor_cls:
+    with patch("agent.src.analyzers.speech.speech_analyzer.AudioFeatureExtractor") as mock_extractor_cls:
         mock_extractor_cls.read_audio_bytes.side_effect = Exception("读取音频失败")
         
         # 调用方法

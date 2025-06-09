@@ -8,11 +8,13 @@ from .retriever import Retriever, HybridRetriever
 from .vector_db import VectorDatabase
 from .document_processor import DocumentProcessor
 from .context7_retriever import Context7Retriever
+from .rag_engine import RAGEngine
 
 __all__ = [
     'Retriever',
     'HybridRetriever',
     'VectorDatabase', 
     'DocumentProcessor',
-    'Context7Retriever'
+    'Context7Retriever',
+    'RAGEngine'
 ] 

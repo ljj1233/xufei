@@ -7,11 +7,11 @@ import asyncio
 import time
 from datetime import datetime
 
-from .config import AgentConfig
-from ..analyzers.speech_analyzer import SpeechAnalyzer
-from ..analyzers.visual_analyzer import VisualAnalyzer
-from ..analyzers.content_analyzer import ContentAnalyzer
-from ..analyzers.overall_analyzer import OverallAnalyzer
+from ..system.config import AgentConfig
+from ...analyzers.speech.speech_analyzer import SpeechAnalyzer
+from ...analyzers.visual.visual_analyzer import VisualAnalyzer
+from ...analyzers.content.content_analyzer import ContentAnalyzer
+from ...analyzers.base.overall_analyzer import OverallAnalyzer
 
 
 class AnalysisResult:
