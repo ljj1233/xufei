@@ -5,7 +5,6 @@
 包含工作流相关的类和函数
 """
 
-from .workflow import InterviewAnalysisWorkflow, analyze_interview
 from .state import GraphState, TaskType, TaskStatus
 
-__all__ = ['InterviewAnalysisWorkflow', 'GraphState', 'TaskType', 'TaskStatus', 'analyze_interview']
+__all__ = ['GraphState', 'TaskType', 'TaskStatus']

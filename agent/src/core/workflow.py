@@ -9,12 +9,6 @@ import logging
 from typing import Dict, Any, Optional, List, Union
 
 from .workflow.state import GraphState, TaskType, TaskStatus
-from ..nodes.task_parser import TaskParser
-from ..nodes.strategy_decider import StrategyDecider
-from ..nodes.task_planner import TaskPlanner
-from ..nodes.analyzer_executor import AnalyzerExecutor
-from ..nodes.result_integrator import ResultIntegrator
-from ..nodes.feedback_generator import FeedbackGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +30,14 @@ class InterviewAnalysisWorkflow:
         Args:
             notification_service: 通知服务，用于向用户发送通知
         """
+        # 延迟导入以避免循环依赖
+        from ..nodes.task_parser import TaskParser
+        from ..nodes.strategy_decider import StrategyDecider
+        from ..nodes.task_planner import TaskPlanner
+        from ..nodes.analyzer_executor import AnalyzerExecutor
+        from ..nodes.result_integrator import ResultIntegrator
+        from ..nodes.feedback_generator import FeedbackGenerator
+
         self.task_parser = TaskParser()
         self.strategy_decider = StrategyDecider()
         self.task_planner = TaskPlanner()

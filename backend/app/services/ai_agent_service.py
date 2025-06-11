@@ -57,7 +57,7 @@ class InterviewAgent:
         }
     
     async def analyze_question_answer(self, session_id, question_id, answer_text, 
-                                     audio_features=None, visual_features=None):
+                                     audio_features=None, visual_features=None, mode="full"):
         """模拟分析问题回答"""
         return {
             "relevance": {"score": 7.5, "details": "回答与问题相关"},
@@ -303,21 +303,23 @@ class AIAgentService:
         question_id: int,
         answer_text: str,
         audio_features: Optional[Dict[str, Any]] = None,
-        visual_features: Optional[Dict[str, Any]] = None
+        visual_features: Optional[Dict[str, Any]] = None,
+        mode: str = "full"
     ) -> Optional[Dict[str, Any]]:
         """分析问题回答"""
         try:
+            # 验证会话存在且为活跃状态
             if session_id not in self.active_sessions:
-                logger.warning(f"Session {session_id} not active for analysis")
-                return None
+                logger.warning(f"会话 {session_id} 未处于活跃分析状态，尝试分析问题 {question_id}")
             
-            # 调用AI智能体分析问题回答
+            # 调用智能体分析问题回答
             result = await self.agent.analyze_question_answer(
                 session_id=str(session_id),
                 question_id=question_id,
                 answer_text=answer_text,
                 audio_features=audio_features,
-                visual_features=visual_features
+                visual_features=visual_features,
+                mode=mode  # 确保向智能体传递模式参数
             )
             
             return result

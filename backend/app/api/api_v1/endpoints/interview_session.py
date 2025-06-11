@@ -58,7 +58,9 @@ def create_interview_session(
             description=session_data.description,
             planned_duration=session_data.planned_duration,
             question_count=session_data.question_count,
-            difficulty_level=session_data.difficulty_level
+            difficulty_level=session_data.difficulty_level,
+            enable_real_time_feedback=session_data.enable_real_time_feedback,
+            mode=session_data.mode
         )
         return session
     except Exception as e:
@@ -545,13 +547,17 @@ async def analyze_question_answer(
         raise HTTPException(status_code=404, detail="问题不存在")
     
     try:
+        # 获取会话的模式
+        session_mode = session.mode
+        
         # 调用AI智能体分析回答
         analysis_result = await ai_agent_service.analyze_question_answer(
             session_id=session_id,
             question_id=question_id,
             answer_text=answer_data.get("answer_text", ""),
             audio_features=answer_data.get("audio_features"),
-            visual_features=answer_data.get("visual_features")
+            visual_features=answer_data.get("visual_features"),
+            mode=session_mode  # 传递模式参数
         )
         
         # 更新问题的分析结果

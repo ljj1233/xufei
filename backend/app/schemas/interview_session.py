@@ -24,6 +24,10 @@ class DifficultyLevel(str, Enum):
     MEDIUM = "medium"
     HARD = "hard"
 
+class InterviewModeEnum(str, Enum):
+    QUICK = "quick"
+    FULL = "full"
+
 # 创建面试会话的请求模型
 class InterviewSessionCreate(BaseModel):
     job_position_id: int = Field(..., description="职位ID")
@@ -33,6 +37,7 @@ class InterviewSessionCreate(BaseModel):
     question_count: int = Field(5, ge=1, le=20, description="问题数量，默认5个")
     difficulty_level: DifficultyLevel = Field(DifficultyLevel.MEDIUM, description="难度等级")
     enable_real_time_feedback: bool = Field(True, description="是否启用实时反馈")
+    mode: InterviewModeEnum = Field(InterviewModeEnum.FULL, description="面试模式，'quick'为快速面试，'full'为完整面试")
 
 # 面试会话响应模型
 class InterviewSessionResponse(BaseModel):
@@ -49,6 +54,7 @@ class InterviewSessionResponse(BaseModel):
     enable_real_time_feedback: bool
     question_count: int
     difficulty_level: str
+    mode: InterviewModeEnum
     overall_score: Optional[float]
     completion_rate: Optional[float]
     created_at: datetime

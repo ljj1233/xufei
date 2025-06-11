@@ -60,6 +60,10 @@ class StrategyDecider:
     
     def _decide_interview_strategy(self, state: GraphState) -> GraphState:
         """决定面试分析策略
+
+        根据传入的 mode 决定使用哪些分析器。
+        "quick" 模式: 使用文本和语音分析。
+        "full" 模式: 使用文本、语音和视觉分析。
         
         Args:
             state: 当前状态
@@ -67,24 +71,35 @@ class StrategyDecider:
         Returns:
             GraphState: 更新后的状态
         """
-        # 检查可用资源
+        # 检查可用资源和模式
         resources = state.get_resources()
+        # 从输入中获取模式，默认为 "full"
+        mode = state.input.get("mode", "full")
         
+        logger.info(f"开始决策，模式: {mode}, 可用资源: {list(resources.keys())}")
+
         # 创建策略列表
         strategies = []
         
-        # 如果有音频文件，添加语音分析策略
-        if "audio_file" in resources:
-            strategies.append("speech_analysis")
-            
-        # 如果有视频文件，添加视觉分析策略
-        if "video_file" in resources:
-            strategies.append("visual_analysis")
-            
-        # 如果有文本数据，添加内容分析策略
+        # 内容分析是所有模式的基础
         if "transcript" in resources:
             strategies.append("content_analysis")
             
+        # 语音分析在 "quick" 和 "full" 模式下都需要
+        if "audio_file" in resources:
+            strategies.append("speech_analysis")
+
+        # 视觉分析只在 "full" 模式下使用
+        if mode == "full" and "video_file" in resources:
+            strategies.append("visual_analysis")
+        
+        # 如果模式是 "quick"，确保不会意外加入 visual_analysis
+        if mode == "quick" and "visual_analysis" in strategies:
+            logger.warning("在快速模式下检测到视觉分析策略，将予以移除。")
+            strategies.remove("visual_analysis")
+            
+        logger.info(f"最终选定策略: {strategies}")
+
         # 设置策略
         state.set_strategies(strategies)
         

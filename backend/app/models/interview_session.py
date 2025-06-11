@@ -22,6 +22,11 @@ class QuestionType(str, enum.Enum):
     CODING = "coding"                    # 编程题
     SYSTEM_DESIGN = "system_design"      # 系统设计
 
+class InterviewMode(str, enum.Enum):
+    """面试模式"""
+    QUICK = "quick"              # 快速面试
+    FULL = "full"                # 完整面试
+
 class InterviewSession(Base):
     """面试会话模型 - 支持模拟面试练习"""
     __tablename__ = "interview_sessions"
@@ -46,6 +51,7 @@ class InterviewSession(Base):
     enable_real_time_feedback = Column(Boolean, default=True)  # 是否启用实时反馈
     question_count = Column(Integer, default=5)  # 问题数量
     difficulty_level = Column(String(20), default="medium")  # 难度等级: easy, medium, hard
+    mode = Column(Enum(InterviewMode), default=InterviewMode.FULL)  # 面试模式: quick, full
     
     # 综合评分（会话结束后计算）
     overall_score = Column(Float)

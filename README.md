@@ -14,44 +14,174 @@
 ├── README.md     # 总体说明文档
 ```
 
-- **backend/**：后端API服务，业务逻辑、数据库、AI服务对接
-- **frontend/**：前端SPA，用户交互与结果展示
-- **agent/**：AI分析核心，能力评测、建议生成等
+### 1.1 后端模块(backend/)
 
-## 2. 主要功能亮点
+后端模块基于FastAPI框架，负责提供API接口、处理业务逻辑、管理数据库操作，以及与智能体模块的交互。
+
+```
+backend/
+├── app/                 # 主应用目录
+│   ├── api/             # API路由定义
+│   │   ├── v1/          # API V1版本接口
+│   │   └── api_v1/      # API V1路由注册
+│   ├── apis/            # 扩展API接口
+│   ├── core/            # 核心配置
+│   ├── db/              # 数据库相关
+│   ├── models/          # 数据库模型
+│   ├── schemas/         # 请求/响应模型(Pydantic)
+│   ├── services/        # 业务服务层
+│   │   ├── ai_agent_service.py         # 智能体服务(与agent模块交互)
+│   │   ├── interview_session_service.py # 面试会话服务
+│   │   ├── analysis_service.py         # 分析服务
+│   │   ├── content_analyzer.py         # 内容分析器
+│   │   ├── speech_analyzer.py          # 语音分析器
+│   │   ├── feedback_generator.py       # 反馈生成器
+│   │   └── learning_recommendation/    # 学习推荐服务
+│   └── utils/           # 工具函数
+├── tests/               # 单元测试
+├── uploads/             # 上传文件目录
+├── requirements.txt     # 依赖包列表
+├── run_tests.py         # 测试运行脚本
+├── README.md            # 后端模块说明
+└── QUICK_START.md       # 快速启动指南
+```
+
+### 1.2 智能体模块(agent/)
+
+智能体模块是系统的分析核心，负责处理多模态数据(文本、音频、视频)，进行分析推理，并输出评估结果。
+
+```
+agent/
+├── src/                 # 源代码目录
+│   ├── analyzers/       # 分析器组件
+│   │   ├── content_analyzer.py   # 内容分析器
+│   │   ├── speech_analyzer.py    # 语音分析器
+│   │   └── visual_analyzer.py    # 视觉分析器
+│   ├── core/            # 核心功能
+│   │   ├── agent/       # 智能体核心
+│   │   └── workflow/    # 工作流引擎
+│   ├── nodes/           # 处理节点
+│   │   ├── strategy_decider.py   # 策略决策器
+│   │   ├── content_node.py       # 内容处理节点
+│   │   ├── speech_node.py        # 语音处理节点
+│   │   └── visual_node.py        # 视觉处理节点
+│   ├── services/        # 服务组件
+│   ├── scenarios/       # 场景定义
+│   ├── retrieval/       # 检索相关
+│   ├── utils/           # 工具函数
+│   ├── system/          # 系统配置
+│   └── learning/        # 学习路径生成
+├── tests/               # 测试目录
+│   ├── unit/            # 单元测试
+│   └── integration/     # 集成测试
+├── data/                # 数据资源
+├── docs/                # 文档
+├── requirements.txt     # 依赖包列表
+└── README.md            # 智能体模块说明
+```
+
+### 1.3 前端模块(frontend/)
+
+前端模块基于Vue 3和Element Plus，提供用户界面，处理用户交互，并与后端通信。
+
+```
+frontend/
+├── public/              # 静态资源
+├── src/                 # 源代码
+│   ├── assets/          # 资源文件
+│   ├── components/      # 组件
+│   ├── views/           # 页面视图
+│   ├── router/          # 路由配置
+│   ├── store/           # 状态管理
+│   ├── api/             # API调用
+│   └── utils/           # 工具函数
+├── tests/               # 测试
+├── package.json         # 依赖配置
+└── README.md            # 前端说明
+```
+
+## 2. 接口设计与一致性
+
+### 2.1 面试模式定义
+
+系统支持两种面试模式：
+
+1. **快速面试(quick)**: 仅使用内容分析和语音分析，适合快速评估和练习。
+2. **完整面试(full)**: 使用内容分析、语音分析和视觉分析的完整评估，提供更全面的反馈。
+
+### 2.2 智能体与后端接口
+
+智能体模块提供策略决策功能，通过`StrategyDecider`类根据`mode`参数选择分析策略：
+- `mode="quick"`: 使用content_analysis和speech_analysis
+- `mode="full"`: 使用content_analysis、speech_analysis和visual_analysis
+
+后端通过`ai_agent_service.py`与智能体交互，确保正确传递面试模式参数：
+```python
+async def analyze_question_answer(
+    self,
+    session_id: int,
+    question_id: int,
+    answer_text: str,
+    audio_features: Optional[Dict[str, Any]] = None,
+    visual_features: Optional[Dict[str, Any]] = None,
+    mode: str = "full"  # 面试模式参数
+) -> Optional[Dict[str, Any]]:
+    # ...
+```
+
+### 2.3 数据模型
+
+面试会话模型(`InterviewSession`)支持面试模式选择：
+```python
+class InterviewSession(Base):
+    # ...
+    mode = Column(Enum(InterviewMode), default=InterviewMode.FULL)  # 面试模式: quick, full
+    # ...
+```
+
+请求模型(`InterviewSessionCreate`)包含模式选择参数：
+```python
+class InterviewSessionCreate(BaseModel):
+    # ...
+    mode: InterviewModeEnum = Field(InterviewModeEnum.FULL, 
+                                  description="面试模式，'quick'为快速面试，'full'为完整面试")
+```
+
+## 3. 主要功能亮点
 
 - 支持多领域典型岗位面试场景（技术、产品、运维等）
 - 支持音频/视频文件上传与多模态分析（语音、视觉、内容）
 - AI驱动的能力评估与改进建议
 - 能力雷达图、评分、问题定位与个性化反馈
 - 用户注册、登录、面试记录管理
+- 支持快速面试和完整面试两种模式
 
-## 3. 快速上手
+## 4. 快速上手
 
-### 3.1 环境准备
+### 4.1 环境准备
 - Python 3.8+
 - Node.js 16+
 - MySQL 8.0+
 - 讯飞开放平台API密钥
 
-### 3.2 后端启动
+### 4.2 后端启动
 详见 [backend/README.md](backend/README.md)
 
-### 3.3 前端启动
+### 4.3 前端启动
 详见 [frontend/README.md](frontend/README.md)
 
-### 3.4 数据库配置
+### 4.4 数据库配置
 - 已统一为MySQL，详见 `backend/.env.example` 和 `backend/MYSQL_MIGRATION_GUIDE.md`
 
-### 3.5 AI服务配置
+### 4.5 AI服务配置
 - 需注册讯飞开放平台，获取API密钥，填入`.env`文件
 
-## 4. 贡献与开发
+## 5. 贡献与开发
 
 - 欢迎提交PR、Issue，详见各子模块README
 - 代码风格与分支管理请参考 [CONTRIBUTING.md](CONTRIBUTING.md)（如有）
 
-## 5. 联系与支持
+## 6. 联系与支持
 
 如有问题请在Issue区留言，或联系项目维护者。
 
