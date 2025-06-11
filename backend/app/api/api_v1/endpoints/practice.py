@@ -18,7 +18,7 @@ from app.db.database import get_db
 from app.core.auth import get_current_user
 from app.models.user import User
 from app.models.interview import InterviewQuestion
-from agent.services.question_service import QuestionGenerationService
+from agent.src.services.question_service import QuestionGenerationService
 
 # 配置日志
 logger = logging.getLogger(__name__)

@@ -101,6 +101,24 @@ def run_performance_tests(verbose=True):
         safe_log(logger, "error", traceback.format_exc())
         return 1
 
+def run_analyzers_tests(verbose=True):
+    """运行分析器测试
+    
+    Args:
+        verbose: 是否显示详细输出
+    
+    Returns:
+        int: 测试结果代码（0表示成功）
+    """
+    safe_log(logger, "info", "运行分析器测试...")
+    try:
+        args = ['analyzers', '-v'] if verbose else ['analyzers']
+        return pytest.main(args)
+    except Exception as e:
+        safe_log(logger, "error", f"运行分析器测试时出错: {e}")
+        safe_log(logger, "error", traceback.format_exc())
+        return 1
+
 def run_mcp_tests(verbose=True):
     """运行MCP测试
     
@@ -112,10 +130,46 @@ def run_mcp_tests(verbose=True):
     """
     safe_log(logger, "info", "运行MCP测试...")
     try:
-        args = ['test_mcp_integration.py', 'test_mcp_rag_integration.py', '-v'] if verbose else ['test_mcp_integration.py', 'test_mcp_rag_integration.py']
+        args = ['mcp', '-v'] if verbose else ['mcp']
         return pytest.main(args)
     except Exception as e:
         safe_log(logger, "error", f"运行MCP测试时出错: {e}")
+        safe_log(logger, "error", traceback.format_exc())
+        return 1
+
+def run_memory_tests(verbose=True):
+    """运行内存测试
+    
+    Args:
+        verbose: 是否显示详细输出
+    
+    Returns:
+        int: 测试结果代码（0表示成功）
+    """
+    safe_log(logger, "info", "运行内存测试...")
+    try:
+        args = ['memory', '-v'] if verbose else ['memory']
+        return pytest.main(args)
+    except Exception as e:
+        safe_log(logger, "error", f"运行内存测试时出错: {e}")
+        safe_log(logger, "error", traceback.format_exc())
+        return 1
+
+def run_workflow_tests(verbose=True):
+    """运行工作流测试
+    
+    Args:
+        verbose: 是否显示详细输出
+    
+    Returns:
+        int: 测试结果代码（0表示成功）
+    """
+    safe_log(logger, "info", "运行工作流测试...")
+    try:
+        args = ['workflow', '-v'] if verbose else ['workflow']
+        return pytest.main(args)
+    except Exception as e:
+        safe_log(logger, "error", f"运行工作流测试时出错: {e}")
         safe_log(logger, "error", traceback.format_exc())
         return 1
 
@@ -162,14 +216,17 @@ def run_all_tests(verbose=True):
     # 运行性能测试
     results["performance"] = run_performance_tests(verbose)
     
+    # 运行分析器测试
+    results["analyzers"] = run_analyzers_tests(verbose)
+    
     # 运行MCP测试
     results["mcp"] = run_mcp_tests(verbose)
     
-    # 运行内容分析器测试
-    results["content"] = run_custom_tests(['test_content_analyzer.py'], verbose)
+    # 运行内存测试
+    results["memory"] = run_memory_tests(verbose)
     
     # 运行工作流测试
-    results["workflow"] = run_custom_tests(['test_integration_workflow.py'], verbose)
+    results["workflow"] = run_workflow_tests(verbose)
     
     # 输出结果摘要
     elapsed = time.time() - start_time
@@ -194,16 +251,18 @@ if __name__ == "__main__":
     parser.add_argument("--unit", action="store_true", help="只运行单元测试")
     parser.add_argument("--integration", action="store_true", help="只运行集成测试")
     parser.add_argument("--performance", action="store_true", help="只运行性能测试")
+    parser.add_argument("--analyzers", action="store_true", help="只运行分析器测试")
     parser.add_argument("--mcp", action="store_true", help="只运行MCP测试")
-    parser.add_argument("--content", action="store_true", help="只运行内容分析器测试")
+    parser.add_argument("--memory", action="store_true", help="只运行内存测试")
     parser.add_argument("--workflow", action="store_true", help="只运行工作流测试")
     parser.add_argument("--all", action="store_true", help="运行所有测试")
     parser.add_argument("--verbose", "-v", action="store_true", help="显示详细输出")
+    parser.add_argument("--custom", type=str, nargs='+', help="运行自定义测试路径")
     
     args = parser.parse_args()
     
     # 如果没有指定任何测试类型，默认运行所有测试
-    if not any([args.unit, args.integration, args.performance, args.mcp, args.content, args.workflow, args.all]):
+    if not any([args.unit, args.integration, args.performance, args.analyzers, args.mcp, args.memory, args.workflow, args.all, args.custom]):
         args.all = True
     
     success = True
@@ -217,11 +276,15 @@ if __name__ == "__main__":
             success = run_integration_tests(args.verbose) == 0 and success
         if args.performance:
             success = run_performance_tests(args.verbose) == 0 and success
+        if args.analyzers:
+            success = run_analyzers_tests(args.verbose) == 0 and success
         if args.mcp:
             success = run_mcp_tests(args.verbose) == 0 and success
-        if args.content:
-            success = run_custom_tests(['test_content_analyzer.py'], args.verbose) == 0 and success
+        if args.memory:
+            success = run_memory_tests(args.verbose) == 0 and success
         if args.workflow:
-            success = run_custom_tests(['test_integration_workflow.py'], args.verbose) == 0 and success
+            success = run_workflow_tests(args.verbose) == 0 and success
+        if args.custom:
+            success = run_custom_tests(args.custom, args.verbose) == 0 and success
     
     sys.exit(0 if success else 1) 

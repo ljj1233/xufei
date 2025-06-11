@@ -199,67 +199,58 @@ class QuestionGenerationService:
             questions = self._parse_llm_response(response, position_info["position_id"])
             
             if not questions:
-                logger.error("解析大模型响应失败，未能获取到有效问题")
+                logger.error("大模型生成问题失败或解析响应失败")
                 return []
-                
-            logger.info(f"成功从大模型生成{len(questions)}道面试问题")
+            
+            logger.info(f"成功生成{len(questions)}道新问题")
             return questions
             
         except Exception as e:
-            logger.error(f"生成新问题时出错: {str(e)}", exc_info=True)
+            logger.error(f"生成面试问题时出错: {str(e)}", exc_info=True)
             return []
     
     def _build_question_prompt(self, position_info: Dict[str, Any], count: int) -> str:
         """
-        构建问题生成的提示词
+        构建问题生成提示词
         
         Args:
-            position_info: 职位信息字典
-            count: 需要生成的问题数量
+            position_info: 职位信息
+            count: 问题数量
             
         Returns:
-            提示词字符串
+            构建好的提示词
         """
-        skills_str = ", ".join(position_info.get("skills", []))
-        if not skills_str:
-            skills_str = "通用职业技能"
+        position_name = position_info.get("position_name", "软件工程师")
+        skills = position_info.get("skills", ["编程", "算法", "系统设计"])
+        tech_field = position_info.get("tech_field", "软件开发")
         
         prompt = f"""
-        你是一位资深的技术面试官，请为以下职位生成{count}道高质量的面试问题：
-        
-        职位名称: {position_info.get("position_name", "未知职位")}
-        技术领域: {position_info.get("tech_field", "未知领域")}
-        需要考察的关键技能: {skills_str}
-        
-        针对每个问题，请提供以下信息：
-        1. 面试问题内容
-        2. 该问题考察的具体技能点（最多3个）
-        3. 建议回答时间（秒）
-        4. 详细的参考答案
-        
-        请确保问题类型多样化，包括：
-        - 技术概念题（考察基础知识）
-        - 实践应用题（考察实际经验）
-        - 问题解决题（考察分析能力）
-        - 项目经验题（考察综合素质）
-        
-        返回格式必须是有效的JSON对象，格式如下:
+        你是一位专业的技术面试官，精通{tech_field}领域，现在需要为{position_name}职位生成{count}道高质量的面试问题。
+
+        职位名称: {position_name}
+        技术领域: {tech_field}
+        技能要求: {', '.join(skills)}
+
+        请生成{count}道面试问题，每道问题需要包含以下信息：
+        1. 问题内容：清晰、具体、难度适中的技术问题
+        2. 技能标签：问题考察的主要技能点（从上述技能列表中选择）
+        3. 建议回答时间：以秒为单位，通常在60-240秒之间
+        4. 参考答案：一个专业、全面但简洁的回答示例
+
+        请以JSON格式返回，格式如下：
         {{
             "questions": [
                 {{
                     "question": "问题内容",
                     "skill_tags": ["技能1", "技能2"],
                     "suggested_duration_seconds": 120,
-                    "reference_answer": "详细参考答案"
+                    "reference_answer": "参考答案"
                 }},
-                ...更多问题
+                ...共{count}道问题
             ]
         }}
-        
-        确保参考答案专业、全面且结构清晰，便于评估面试者的回答质量。
         """
         
-        logger.info(f"已构建问题生成提示词，职位：{position_info.get('position_name')}")
         return prompt
     
     def _parse_llm_response(self, response: str, position_id: int) -> List[Dict[str, Any]]:
@@ -277,29 +268,26 @@ class QuestionGenerationService:
             # 尝试解析JSON
             data = json.loads(response)
             
-            # 检查是否包含questions字段
-            if "questions" not in data or not isinstance(data["questions"], list):
-                logger.error(f"大模型响应格式不正确: {response[:100]}...")
-                return []
+            # 获取问题列表
+            questions = data.get("questions", [])
             
-            questions = []
-            for i, q in enumerate(data["questions"]):
-                # 验证必要字段
-                if not all(k in q for k in ["question", "skill_tags", "suggested_duration_seconds", "reference_answer"]):
-                    logger.warning(f"问题{i+1}缺少必要字段，已跳过")
+            # 验证数据格式并添加position_id
+            result = []
+            for q in questions:
+                if not isinstance(q, dict) or "question" not in q:
                     continue
-                    
-                # 添加问题ID和职位ID
-                q["position_id"] = position_id
                 
-                questions.append(q)
+                question_dict = {
+                    "question": q.get("question", ""),
+                    "skill_tags": q.get("skill_tags", []),
+                    "suggested_duration_seconds": q.get("suggested_duration_seconds", 120),
+                    "reference_answer": q.get("reference_answer", ""),
+                    "position_id": position_id
+                }
+                result.append(question_dict)
             
-            logger.info(f"成功解析{len(questions)}道问题")
-            return questions
+            return result
             
-        except json.JSONDecodeError:
-            logger.error(f"大模型响应不是有效的JSON: {response[:100]}...", exc_info=True)
-            return []
         except Exception as e:
             logger.error(f"解析大模型响应时出错: {str(e)}", exc_info=True)
             return []
@@ -313,25 +301,22 @@ class QuestionGenerationService:
             questions: 问题列表
         """
         try:
+            # 创建InterviewQuestion对象并添加到数据库
             for q in questions:
-                # 准备技能标签
-                skill_tags = ",".join(q.get("skill_tags", []))
-                
-                # 创建新的问题记录
-                new_question = InterviewQuestion(
-                    position_id=position_id,
+                question = InterviewQuestion(
                     content=q["question"],
-                    skill_tags=skill_tags,
+                    skill_tags=",".join(q["skill_tags"]) if q["skill_tags"] else "",
                     suggested_duration_seconds=q["suggested_duration_seconds"],
-                    reference_answer=q["reference_answer"]
+                    reference_answer=q["reference_answer"],
+                    position_id=position_id
                 )
-                
-                self.db.add(new_question)
+                self.db.add(question)
             
             # 提交事务
             self.db.commit()
             logger.info(f"成功将{len(questions)}道问题缓存到数据库")
             
         except Exception as e:
+            # 回滚事务
             self.db.rollback()
             logger.error(f"缓存问题到数据库时出错: {str(e)}", exc_info=True) 

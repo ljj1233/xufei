@@ -15,6 +15,7 @@ from ..base.analyzer import Analyzer
 from ...core.system.config import AgentConfig
 from ...utils.utils import normalize_score, weighted_average
 from ...services.content_filter_service import ContentFilterService
+from ...services.async_xunfei_service import AsyncXunFeiService
 
 logger = logging.getLogger(__name__)
 
@@ -32,9 +33,12 @@ class VisualAnalyzer(Analyzer):
         """
         super().__init__(name="visual_analyzer", analyzer_type="visual", config=config)
         
+        logger.info("开始初始化视觉分析器...")
+        
         # 加载模型配置
         self.face_detection_model = self.get_config("face_detection_model", "haarcascade")
         self.frame_sample_rate = self.get_config("frame_sample_rate", 5)  # 每秒采样帧数
+        logger.debug(f"配置参数: face_detection_model={self.face_detection_model}, frame_sample_rate={self.frame_sample_rate}")
         
         # 初始化人脸检测器（延迟加载）
         self._face_detector = None
@@ -45,21 +49,41 @@ class VisualAnalyzer(Analyzer):
         self.last_analysis_time = 0
         self.analysis_interval = 0.5  # 分析间隔（秒）
         self.face_tracking = {}  # 人脸跟踪信息
+        
+        # 讯飞LLM相关配置
+        self.use_xunfei_llm = self.config.get("visual", "use_xunfei_llm", True)
+        self.async_xunfei_service = None
+        
+        # 如果启用讯飞LLM，初始化服务
+        if self.use_xunfei_llm:
+            logger.info("初始化讯飞星火大模型服务...")
+            try:
+                self.async_xunfei_service = AsyncXunFeiService(self.config)
+                logger.info("讯飞星火大模型服务初始化成功")
+            except Exception as e:
+                logger.error(f"初始化讯飞星火大模型服务失败: {e}", exc_info=True)
+                self.use_xunfei_llm = False
+                self.async_xunfei_service = None
+        
+        logger.info("视觉分析器初始化完成")
     
     def _load_face_detector(self):
         """加载人脸检测器"""
+        logger.info("开始加载人脸检测器...")
         try:
             if self.face_detection_model == "haarcascade":
                 # 使用OpenCV内置的Haar级联分类器
                 model_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
                 self._face_detector = cv2.CascadeClassifier(model_path)
+                logger.info("成功加载Haar级联人脸检测器")
             else:
                 # 默认使用Haar级联分类器
                 model_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
                 self._face_detector = cv2.CascadeClassifier(model_path)
+                logger.info("使用默认Haar级联人脸检测器")
         
         except Exception as e:
-            print(f"加载人脸检测器失败: {e}")
+            logger.error(f"加载人脸检测器失败: {e}", exc_info=True)
             self._face_detector = None
     
     def extract_features(self, file_path: str) -> Dict[str, Any]:
@@ -754,58 +778,272 @@ class VisualAnalyzer(Analyzer):
         self.last_analysis_time = 0
         self.face_tracking.clear()
 
-    async def analyze(self, video_file: str) -> Dict[str, Any]:
+    async def analyze(self, video_file: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """分析视频文件
         
         Args:
             video_file: 视频文件路径
+            params: 分析参数
             
         Returns:
             Dict[str, Any]: 分析结果
         """
+        logger.info(f"开始分析视频文件: {video_file}")
         try:
             # 提取特征
+            logger.debug("开始提取视频特征...")
             features = await self.extract_features(video_file)
+            logger.debug(f"视频特征提取完成: {json.dumps(features, ensure_ascii=False)[:200]}...")
             
-            # 分析特征
+            # 如果启用了讯飞星火大模型且服务可用，使用LLM进行分析
+            if self.use_xunfei_llm and self.async_xunfei_service:
+                logger.info("使用讯飞星火大模型进行视觉分析...")
+                try:
+                    llm_result = await self.analyze_with_llm(features)
+                    logger.info("讯飞星火大模型分析完成")
+                    
+                    # 如果LLM分析成功，返回结果
+                    if "scores" in llm_result and "analysis" in llm_result:
+                        legacy_result = {
+                            "facial_expression": {
+                                "score": llm_result["scores"].get("facial_expression", 0),
+                                "feedback": "请参考详细分析"
+                            },
+                            "eye_contact": {
+                                "score": llm_result["scores"].get("eye_contact", 0),
+                                "feedback": "请参考详细分析"
+                            },
+                            "body_language": {
+                                "score": llm_result["scores"].get("body_language", 0),
+                                "feedback": "请参考详细分析"
+                            },
+                            "overall_score": llm_result["scores"].get("overall_score", 0),
+                            "detailed_scores": llm_result["scores"],
+                            "analysis": llm_result["analysis"],
+                            "summary": llm_result.get("summary", "")
+                        }
+                        logger.debug(f"返回LLM分析结果: {json.dumps(legacy_result, ensure_ascii=False)[:200]}...")
+                        return legacy_result
+                    else:
+                        logger.warning("LLM分析结果格式不正确，将使用传统方法分析")
+                except Exception as e:
+                    logger.exception(f"LLM分析失败: {e}")
+                    logger.warning("将使用传统方法进行视觉分析")
+            else:
+                logger.info("讯飞星火大模型未启用或不可用，使用传统方法进行视觉分析")
+            
+            # 使用传统方法分析特征
+            logger.info("开始使用传统方法进行视觉分析...")
             result = {
                 "facial_expression": await self.analyze_facial_expression(features),
                 "eye_contact": await self.analyze_eye_contact(features),
                 "body_language": await self.analyze_body_language(features)
             }
             
+            # 计算总体评分
+            scores = [
+                result["facial_expression"]["score"],
+                result["eye_contact"]["score"],
+                result["body_language"]["score"]
+            ]
+            result["overall_score"] = round(sum(scores) / len(scores))
+            
+            logger.info(f"视觉分析完成，总评分: {result['overall_score']}")
             return result
         except Exception as e:
-            logger.exception(f"视觉分析失败: {str(e)}")
+            logger.exception(f"视觉分析失败: {e}")
             return {
                 "error": str(e),
                 "facial_expression": {"score": 0, "feedback": "分析失败"},
                 "eye_contact": {"score": 0, "feedback": "分析失败"},
-                "body_language": {"score": 0, "feedback": "分析失败"}
+                "body_language": {"score": 0, "feedback": "分析失败"},
+                "overall_score": 0
             }
 
-    async def extract_features(self, video_file: str) -> Dict[str, Any]:
-        """提取特征
+    async def analyze_with_llm(self, features: Dict[str, Any]) -> Dict[str, Any]:
+        """使用讯飞星火大模型进行视觉分析
         
         Args:
-            video_file: 视频文件路径
+            features: 视频特征
             
         Returns:
-            Dict[str, Any]: 提取的特征
+            Dict[str, Any]: 分析结果
         """
-        # 模拟处理时间
-        await asyncio.sleep(0.1)
+        logger.info("开始使用讯飞星火大模型分析视频特征...")
         
-        # 简单实现，返回模拟特征
-        return {
-            "duration": 120.0,  # 120秒
-            "frame_count": 3600,  # 30fps x 120秒
-            "face_detected_ratio": 0.95,  # 95%的帧检测到人脸
-            "smile_ratio": 0.6,  # 60%的时间在微笑
-            "eye_contact_ratio": 0.8,  # 80%的时间有眼神接触
-            "posture_changes": 5,  # 5次姿势变化
-            "hand_gestures": 12  # 12次手势
-        }
+        try:
+            # 构建提示词
+            prompt = self._build_visual_analysis_prompt(features)
+            
+            # 准备对话消息
+            messages = [
+                {
+                    "role": "user", 
+                    "content": prompt
+                }
+            ]
+            
+            logger.info("调用讯飞星火大模型...")
+            # 调用星火大模型
+            response = await self.async_xunfei_service.chat_spark(
+                messages=messages,
+                temperature=0.3,  # 低温度以获得更稳定的评分
+                max_tokens=2048
+            )
+            
+            # 解析结果
+            if response.get("status") == "success":
+                content = response.get("content", "")
+                logger.info(f"星火大模型调用成功，响应长度: {len(content)}")
+                return self._parse_llm_response(content)
+            else:
+                logger.error(f"星火大模型调用失败: {response.get('error', '未知错误')}")
+                # 返回空结果，后续会使用传统方法分析
+                raise ValueError(f"星火大模型调用失败: {response.get('error', '未知错误')}")
+                
+        except Exception as e:
+            logger.exception(f"LLM分析失败: {e}")
+            # 返回空结果，后续会使用传统方法分析
+            raise
+    
+    def _build_visual_analysis_prompt(self, features: Dict[str, Any]) -> str:
+        """构建视觉分析提示词
+        
+        Args:
+            features: 提取的视频特征
+            
+        Returns:
+            str: 构建好的提示词
+        """
+        # 提取关键特征用于提示词
+        face_detected_ratio = features.get("face_detected_ratio", 0)
+        smile_ratio = features.get("smile_ratio", 0)
+        eye_contact_ratio = features.get("eye_contact_ratio", 0)
+        posture_changes = features.get("posture_changes", 0)
+        hand_gestures = features.get("hand_gestures", 0)
+        duration = features.get("duration", 0)
+        
+        prompt = f"""
+        请作为专业的面试视频分析专家，对以下面试视频进行全面分析。
+        
+        ## 视频特征数据
+        - 视频时长: {duration} 秒
+        - 人脸检测率: {face_detected_ratio:.2f}（检测到人脸的帧比例）
+        - 微笑比例: {smile_ratio:.2f}（微笑表情的时间比例）
+        - 眼神接触比例: {eye_contact_ratio:.2f}（保持眼神接触的时间比例）
+        - 姿势变化次数: {posture_changes} 次
+        - 手势使用次数: {hand_gestures} 次
+        
+        ## 请进行以下三个维度的视觉表现评分和分析(每个维度0-100分):
+        1. 面部表情(Facial Expression): 面部表情是否自然、生动、适合面试场景
+        2. 眼神接触(Eye Contact): 是否与摄像头保持适当的眼神交流，表现自信
+        3. 肢体语言(Body Language): 姿势和手势是否得体、自然，辅助表达
+        
+        ## 回答分析:
+        1. 主要优势(列出2-3点)
+        2. 改进建议(列出2-3点)
+        
+        ## 请以JSON格式返回，格式如下:
+        {{
+            "scores": {{
+                "facial_expression": 85,
+                "eye_contact": 80,
+                "body_language": 75,
+                "overall_score": 80
+            }},
+            "analysis": {{
+                "strengths": [
+                    "优势1",
+                    "优势2"
+                ],
+                "suggestions": [
+                    "建议1",
+                    "建议2"
+                ]
+            }},
+            "summary": "一句话总结评价"
+        }}
+        
+        请确保JSON格式正确，overall_score为所有维度的加权平均分。
+        """
+        
+        logger.debug(f"构建的提示词: {prompt}")
+        return prompt
+    
+    def _parse_llm_response(self, response_text: str) -> Dict[str, Any]:
+        """解析LLM响应
+        
+        Args:
+            response_text: LLM返回的文本
+            
+        Returns:
+            Dict[str, Any]: 解析后的结果
+        """
+        logger.info("开始解析LLM响应...")
+        try:
+            # 尝试提取JSON
+            text = response_text.strip()
+            
+            # 定位JSON开始和结束的位置
+            json_start = text.find('{')
+            json_end = text.rfind('}') + 1
+            
+            if json_start >= 0 and json_end > json_start:
+                json_str = text[json_start:json_end]
+                logger.debug(f"提取的JSON字符串: {json_str}")
+                result = json.loads(json_str)
+                
+                # 确保result包含必要的字段
+                if not isinstance(result, dict):
+                    logger.error("返回结果不是有效的JSON对象")
+                    raise ValueError("返回结果不是有效的JSON对象")
+                
+                # 检查scores字段
+                if "scores" not in result or not isinstance(result["scores"], dict):
+                    logger.error("返回结果中缺少scores字段或格式不正确")
+                    raise ValueError("返回结果中缺少scores字段或格式不正确")
+                
+                # 检查analysis字段
+                if "analysis" not in result or not isinstance(result["analysis"], dict):
+                    logger.error("返回结果中缺少analysis字段或格式不正确")
+                    raise ValueError("返回结果中缺少analysis字段或格式不正确")
+                
+                # 确保overall_score存在
+                if "overall_score" not in result["scores"]:
+                    logger.warning("返回结果中缺少overall_score字段，将自动计算")
+                    # 如果没有overall_score，计算平均分
+                    scores = result["scores"]
+                    score_values = [v for k, v in scores.items() if k != "overall_score" and isinstance(v, (int, float))]
+                    if score_values:
+                        result["scores"]["overall_score"] = round(sum(score_values) / len(score_values))
+                        logger.info(f"自动计算的overall_score值为: {result['scores']['overall_score']}")
+                    else:
+                        result["scores"]["overall_score"] = 0
+                        logger.warning("无法自动计算overall_score，设置为默认值0")
+                
+                logger.info(f"LLM响应解析成功，得分: {result['scores'].get('overall_score')}")
+                return result
+            else:
+                logger.error(f"无法从LLM响应中提取JSON，json_start={json_start}, json_end={json_end}")
+                raise ValueError("无法从LLM响应中提取JSON")
+        
+        except Exception as e:
+            logger.exception(f"解析LLM响应失败: {e}")
+            # 返回一个基本结构以确保API兼容性
+            return {
+                "scores": {
+                    "facial_expression": 0,
+                    "eye_contact": 0,
+                    "body_language": 0,
+                    "overall_score": 0
+                },
+                "analysis": {
+                    "strengths": ["解析失败"],
+                    "suggestions": ["解析失败"]
+                },
+                "summary": "解析LLM响应失败",
+                "error": str(e)
+            }
 
     async def analyze_facial_expression(self, features: Dict[str, Any]) -> Dict[str, Any]:
         """分析面部表情

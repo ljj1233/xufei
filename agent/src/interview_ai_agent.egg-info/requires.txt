@@ -1,6 +1,0 @@
-numpy
-opencv-python
-librosa
-torch
-transformers
-requests

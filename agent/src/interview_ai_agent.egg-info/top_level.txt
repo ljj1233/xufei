@@ -1,6 +1,0 @@
-analyzers
-core
-learning
-nodes
-services
-utils
