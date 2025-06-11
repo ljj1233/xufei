@@ -18,7 +18,7 @@ from app.db.database import get_db
 from app.core.auth import get_current_user
 from app.models.user import User
 from app.models.interview import InterviewQuestion
-from agent.src.services.question_service import QuestionGenerationService
+from agent.src.services.question_service import QuestionService, create_question_service
 
 # 配置日志
 logger = logging.getLogger(__name__)
@@ -29,6 +29,7 @@ router = APIRouter()
 async def get_practice_questions(
     position_id: int, 
     count: Optional[int] = Query(6, description="需要获取的题目数量"),
+    mode: Optional[str] = Query("full", description="面试模式: quick或full"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -38,18 +39,71 @@ async def get_practice_questions(
     Args:
         position_id: 职位ID
         count: 题目数量，默认为6道
+        mode: 面试模式，默认为完整模式
         
     Returns:
-        题目列表，每个题目包含问题内容、技能标签、建议回答时长
+        题目列表，每个题目包含问题内容、类型、建议回答时长
     """
     try:
-        logger.info(f"用户{current_user.id}请求职位{position_id}的练习题目，数量={count}")
+        logger.info(f"用户{current_user.id}请求职位{position_id}的练习题目，数量={count}，模式={mode}")
         
-        # 实例化问题生成服务
-        question_service = QuestionGenerationService(db=db)
+        # 查询职位信息
+        from app.models.job import JobPosition, JobSkill
+        
+        # 查询职位信息
+        position = db.query(JobPosition).filter(JobPosition.id == position_id).first()
+        if not position:
+            logger.error(f"找不到职位ID={position_id}")
+            raise HTTPException(status_code=404, detail="职位不存在")
+            
+        # 查询相关技能
+        skills = db.query(JobSkill).filter(JobSkill.position_id == position_id).all()
+        skill_names = [skill.name for skill in skills]
+        
+        # 构建职位信息
+        position_info = {
+            "position_id": position.id,
+            "position_name": position.name,
+            "title": position.name,
+            "tech_field": position.tech_field,
+            "description": position.description,
+            "skills": skill_names
+        }
+        
+        # 实例化问题服务
+        question_service = create_question_service()
         
         # 获取题目
-        questions = await question_service.generate_questions_for_position(position_id, count)
+        questions = await question_service.generate_interview_questions(
+            position_info=position_info,
+            question_count=count,
+            difficulty_level="medium",
+            mode=mode
+        )
+        
+        # 保存问题到数据库，以便查看参考答案
+        for q in questions:
+            question_text = q.get("text", "")
+            answer_text = q.get("reference_answer", "")
+            
+            if not question_text:
+                continue
+                
+            # 创建InterviewQuestion对象
+            question = InterviewQuestion(
+                content=question_text,
+                skill_tags=",".join(q.get("key_concepts", [])) if "key_concepts" in q else "",
+                suggested_duration_seconds=q.get("duration", 120),
+                reference_answer=answer_text,
+                position_id=position_id
+            )
+            db.add(question)
+            
+            # 更新返回的问题字段，添加数据库ID
+            q["id"] = question.id
+        
+        # 提交事务
+        db.commit()
         
         # 从返回结果中移除参考答案，避免直接展示给用户
         for q in questions:
@@ -61,6 +115,11 @@ async def get_practice_questions(
             # 移除参考答案
             if "reference_answer" in q:
                 del q["reference_answer"]
+                
+            # 保持字段名称一致
+            if "text" in q and "question" not in q:
+                q["question"] = q["text"]
+                del q["text"]
         
         logger.info(f"成功返回{len(questions)}道练习题目")
         return questions
