@@ -110,8 +110,16 @@ async def test_spark_lite_chat():
         if result.get('status') == 'success':
             print("\n[星火Lite回答]")
             print("-" * 60)
-            print(result)
+            print(result.get('content', ''))
             print("-" * 60)
+            
+            # 添加token使用情况的显示
+            if 'token_usage' in result:
+                usage = result['token_usage']
+                print(f"[Token使用] 提问: {usage.get('prompt_tokens', 0)} | "
+                      f"回答: {usage.get('completion_tokens', 0)} | "
+                      f"总计: {usage.get('total_tokens', 0)}")
+                
             print("[测试结果] 星火Lite对话功能测试成功!")
         else:
             error_msg = result.get('error', '未知错误')

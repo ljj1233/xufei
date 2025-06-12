@@ -21,13 +21,18 @@ class AsyncXunFeiService:
     """讯飞服务的异步实现
     
     封装与讯飞开放平台API的异步交互
+    
+    Args:
+        config: 配置对象，如果为None则创建默认配置
+        max_concurrent_requests: 最大并发请求数，默认为1
     """
     
-    def __init__(self, config: Optional[AgentConfig] = None):
+    def __init__(self, config: Optional[AgentConfig] = None, max_concurrent_requests: int = 1):
         """初始化讯飞服务
         
         Args:
             config: 配置对象，如果为None则创建默认配置
+            max_concurrent_requests: 最大并发请求数，控制API调用的并发数量
         """
         self.config = config or AgentConfig()
         
@@ -49,8 +54,10 @@ class AsyncXunFeiService:
         # 星火API URL（默认使用Lite版本）- 使用正确的Lite版本URL
         self.spark_api_url = self.config.get_service_config("xunfei", "spark_api_url", "wss://spark-api.xf-yun.com/v1.1/chat")
         
-        # 创建一个信号量，限制并发请求为5
-        self.api_semaphore = asyncio.Semaphore(1)
+        # 创建一个信号量，限制并发请求数量
+        self.max_concurrent_requests = max_concurrent_requests
+        self.api_semaphore = asyncio.Semaphore(max_concurrent_requests)
+        logger.info(f"初始化讯飞服务，最大并发请求数: {max_concurrent_requests}")
         
         # 检查语音识别配置
         if not self.xunfei_app_id or not self.xunfei_api_key or not self.xunfei_api_secret:
@@ -106,7 +113,10 @@ class AsyncXunFeiService:
         Returns:
             str: 识别结果文本
         """
+        # 获取信号量，限制并发请求
+        logger.debug(f"等待信号量，当前可用: {self.api_semaphore._value}/{self.max_concurrent_requests}")
         async with self.api_semaphore:
+            logger.debug(f"获取到信号量，开始语音识别请求，剩余可用: {self.api_semaphore._value}/{self.max_concurrent_requests}")
             url = self.iat_url
             
             # 检查音频数据大小
@@ -218,6 +228,8 @@ class AsyncXunFeiService:
             except Exception as e:
                 logger.error(f"语音识别请求异常: {e}")
                 return ''
+            finally:
+                logger.debug(f"语音识别请求完成，释放信号量，当前可用: {self.api_semaphore._value + 1}/{self.max_concurrent_requests}")
     
     async def speech_assessment(self, audio_data: bytes) -> Dict:
         """异步语音评测服务
@@ -230,7 +242,9 @@ class AsyncXunFeiService:
         Returns:
             Dict: 评测结果
         """
+        logger.debug(f"等待信号量，当前可用: {self.api_semaphore._value}/{self.max_concurrent_requests}")
         async with self.api_semaphore:
+            logger.debug(f"获取到信号量，开始语音评测请求，剩余可用: {self.api_semaphore._value}/{self.max_concurrent_requests}")
             url = self.ise_url
             # 使用讯飞语音识别API凭证，不是星火的
             auth_params = await self._create_auth_params(url, is_spark=False)
@@ -267,6 +281,8 @@ class AsyncXunFeiService:
             except Exception as e:
                 logger.error(f"语音评测请求异常: {e}")
                 return {}
+            finally:
+                logger.debug(f"语音评测请求完成，释放信号量，当前可用: {self.api_semaphore._value + 1}/{self.max_concurrent_requests}")
     
     async def emotion_analysis(self, audio_data: bytes) -> Dict:
         """异步情感分析服务
@@ -279,7 +295,9 @@ class AsyncXunFeiService:
         Returns:
             Dict: 情感分析结果
         """
+        logger.debug(f"等待信号量，当前可用: {self.api_semaphore._value}/{self.max_concurrent_requests}")
         async with self.api_semaphore:
+            logger.debug(f"获取到信号量，开始情感分析请求，剩余可用: {self.api_semaphore._value}/{self.max_concurrent_requests}")
             url = self.emotion_url
             # 使用讯飞语音识别API凭证，不是星火的
             auth_params = await self._create_auth_params(url, is_spark=False)
@@ -312,18 +330,23 @@ class AsyncXunFeiService:
             except Exception as e:
                 logger.error(f"情感分析请求异常: {e}")
                 return {}
+            finally:
+                logger.debug(f"情感分析请求完成，释放信号量，当前可用: {self.api_semaphore._value + 1}/{self.max_concurrent_requests}")
             
     async def chat_spark(self, messages: List[Dict[str, str]], 
-                        temperature: float = 0.5, 
-                        max_tokens: int = 2048) -> Dict[str, any]:
+                         temperature: float = 0.5, 
+                         max_tokens: int = 2048) -> Dict[str, any]:
         """修复鉴权逻辑的星火对话方法"""
+        logger.debug(f"等待信号量，当前可用: {self.api_semaphore._value}/{self.max_concurrent_requests}")
         async with self.api_semaphore:
+            logger.debug(f"获取到信号量，开始星火对话请求，剩余可用: {self.api_semaphore._value}/{self.max_concurrent_requests}")
             try:
                 # 1. 基础配置
                 spark_api_url = self.spark_api_url
                 host = "spark-api.xf-yun.com"
                 path = "/v1.1/chat"
-                print('app_id: ', self.spark_app_id)
+                logger.info(f'星火对话请求开始，使用app_id: {self.spark_app_id[:4]}****')
+                
                 # 构造正确的请求体
                 request_body = {
                     "header": {
@@ -378,31 +401,75 @@ class AsyncXunFeiService:
                 url = f"{spark_api_url}?{urlencode(url_params)}"
                 
                 # 7. WebSocket 连接（优化错误处理）
-                response = {"status": "error", "content": ""}
-                print(f'request_body: {request_body}')
+                response = {"status": "error", "content": "", "error": ""}
+                logger.debug(f'星火对话请求体: {json.dumps(request_body, ensure_ascii=False)}')
+                
+                # 用于拼接完整回答内容的变量
+                full_content = ""
+                token_usage = {}
+                
                 async with aiohttp.ClientSession() as session:
                     try:
                         async with session.ws_connect(url, timeout=aiohttp.ClientTimeout(total=30)) as ws:
+                            logger.info("WebSocket连接已建立，发送请求数据...")
                             await ws.send_str(json.dumps(request_body))
                             
                             async for msg in ws:
                                 if msg.type == aiohttp.WSMsgType.TEXT:
                                     result = json.loads(msg.data)
+                                    logger.debug(f"收到响应: {result}")
+                                    
                                     if result["header"]["code"] == 0:
-                                        response["status"] = "success"
-                                        response["content"] = result["payload"]["choices"]["text"][0]["content"]
+                                        # 检查payload和choices是否存在
+                                        if "payload" in result and "choices" in result["payload"]:
+                                            # 获取当前回答片段
+                                            if "text" in result["payload"]["choices"]:
+                                                text_list = result["payload"]["choices"]["text"]
+                                                if text_list and len(text_list) > 0:
+                                                    content_piece = text_list[0].get("content", "")
+                                                    
+                                                    # 拼接内容片段
+                                                    full_content += content_piece
+                                                    logger.debug(f"收到内容片段: 「{content_piece}」")
+                                                    logger.debug(f"当前拼接结果: 「{full_content}」")
+                                        
+                                        # 如果是最后一条消息，完成拼接
                                         if result["header"]["status"] == 2:
+                                            logger.info("接收到最终响应，内容拼接完成")
+                                            # 记录token使用情况
+                                            if "payload" in result and "usage" in result["payload"]:
+                                                if "text" in result["payload"]["usage"]:
+                                                    token_usage = result["payload"]["usage"]["text"]
+                                                    logger.info(f"Token使用: 提问={token_usage.get('prompt_tokens', 0)}, "
+                                                                f"回答={token_usage.get('completion_tokens', 0)}, "
+                                                                f"总计={token_usage.get('total_tokens', 0)}")
+                                            
+                                            response["status"] = "success"
+                                            response["content"] = full_content
+                                            response["token_usage"] = token_usage
                                             break
                                     else:
-                                        response["error"] = f"Code {result['header']['code']}: {result['header']['message']}"
+                                        error_code = result["header"]["code"]
+                                        error_msg = result["header"]["message"]
+                                        logger.error(f"星火对话错误: Code {error_code}: {error_msg}")
+                                        response["error"] = f"Code {error_code}: {error_msg}"
                                         break
                     except aiohttp.ClientError as e:
+                        logger.error(f"WebSocket 连接失败: {str(e)}")
                         response["error"] = f"WebSocket 连接失败: {str(e)}"
                     except json.JSONDecodeError:
+                        logger.error("无效的响应格式")
                         response["error"] = "无效的响应格式"
-                print(f'response: {response}')
+                    except Exception as e:
+                        logger.error(f"处理WebSocket响应时发生错误: {str(e)}")
+                        response["error"] = f"处理响应错误: {str(e)}"
+                
+                logger.info(f'星火对话响应状态: {response.get("status")}')
+                logger.info(f'星火对话响应内容: {response.get("content", "")[:50]}...')
                 return response
                 
             except Exception as e:
                 logger.error(f"星火对话异常: {str(e)}")
-                return {"status": "error", "error": str(e)}
+                return {"status": "error", "content": "", "error": str(e)}
+            finally:
+                logger.debug(f"星火对话请求完成，释放信号量，当前可用: {self.api_semaphore._value + 1}/{self.max_concurrent_requests}")
