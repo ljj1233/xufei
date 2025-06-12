@@ -9,6 +9,8 @@ import logging
 import json
 from typing import Dict, Any, Optional, List
 import numpy as np
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
 from ...core.system.config import AgentConfig
 from ...services.content_filter_service import ContentFilterService
@@ -25,37 +27,55 @@ class SpeechAnalyzer:
         """初始化语音分析器
         
         Args:
-            config: 配置对象
+            config: 配置对象，如果为None则创建默认配置
         """
+        logger.info("语音分析器初始化开始，使用讯飞API: True, 使用讯飞LLM: True")
+        
         self.config = config or AgentConfig()
         self.name = "speech_analyzer"
         self.analyzer_type = "speech"
         
-        # 根据配置决定是否使用讯飞服务
+        # 初始化语音模型配置
         self.use_xunfei = self.config.get("speech", "use_xunfei", True)
         self.use_xunfei_llm = self.config.get("speech", "use_xunfei_llm", True)
+        
+        # 检查是否配置了星火大模型
+        spark_app_id = self.config.get_service_config("xunfei", "spark_app_id", "")
+        if spark_app_id:
+            logger.info("已检测到星火大模型配置，将使用星火Lite版本进行语音分析")
+            self.use_xunfei_llm = True
+        
+        # 初始化讯飞服务
         self.xunfei_service = None
         self.async_xunfei_service = None
-        
-        logger.info(f"语音分析器初始化开始，使用讯飞API: {self.use_xunfei}, 使用讯飞LLM: {self.use_xunfei_llm}")
         
         if self.use_xunfei:
             try:
                 logger.info("正在初始化讯飞服务...")
+                # 同步服务仅用于非异步方法
+                from agent.src.services.xunfei_service import XunFeiService
                 self.xunfei_service = XunFeiService(self.config)
                 logger.info("讯飞服务初始化成功")
                 
-                # 初始化异步讯飞服务（用于星火大模型）
+                # 初始化异步讯飞服务（用于异步方法）
                 if self.use_xunfei_llm:
-                    logger.info("正在初始化讯飞异步服务(星火大模型)...")
+                    logger.info("正在初始化讯飞异步服务...")
+                    from agent.src.services.async_xunfei_service import AsyncXunFeiService
                     self.async_xunfei_service = AsyncXunFeiService(self.config)
-                    logger.info("讯飞异步服务(星火大模型)初始化成功")
+                    logger.info("讯飞异步服务初始化成功")
             except Exception as e:
                 logger.error(f"初始化讯飞服务失败: {e}", exc_info=True)
                 self.use_xunfei = False
                 self.use_xunfei_llm = False
                 self.xunfei_service = None
                 self.async_xunfei_service = None
+        
+        # 初始化基本特征提取器
+        from .audio_feature_extractor import AudioFeatureExtractor
+        self.feature_extractor = AudioFeatureExtractor()
+        
+        # 创建线程池用于并行处理
+        self.thread_pool = ThreadPoolExecutor(max_workers=5)
         
         logger.info("语音分析器初始化完成")
     
@@ -98,6 +118,50 @@ class SpeechAnalyzer:
             logger.error(f"提取讯飞API特征失败: {e}", exc_info=True)
             return {}
             
+    async def _extract_xunfei_features_async(self, audio_bytes: bytes) -> Dict[str, Any]:
+        """异步提取讯飞API特征
+        
+        使用 asyncio.gather 并行执行网络请求，提高效率。
+        
+        Args:
+            audio_bytes: 音频数据字节
+            
+        Returns:
+            Dict[str, Any]: 讯飞API特征
+        """
+        features = {}
+        if not self.use_xunfei or not self.async_xunfei_service:
+            logger.warning("讯飞异步服务未启用或初始化失败，无法提取讯飞异步特征")
+            return features
+
+        try:
+            logger.info("正在异步、并行获取讯飞语音评测和情感分析结果...")
+            # 使用 asyncio.gather 并行执行两个异步任务
+            assessment_task = self.async_xunfei_service.speech_assessment(audio_bytes)
+            emotion_task = self.async_xunfei_service.emotion_analysis(audio_bytes)
+            
+            # return_exceptions=True 使得即使一个任务失败，其他任务也能完成
+            results = await asyncio.gather(assessment_task, emotion_task, return_exceptions=True)
+            
+            assessment, emotion = results
+
+            if not isinstance(assessment, Exception) and assessment:
+                features["xunfei_assessment"] = assessment
+                logger.info(f"获取讯飞语音评测结果成功: {assessment}")
+            else:
+                logger.warning(f"获取讯飞语音评测结果失败: {assessment}")
+
+            if not isinstance(emotion, Exception) and emotion:
+                features["xunfei_emotion"] = emotion
+                logger.info(f"获取讯飞情感分析结果成功: {emotion}")
+            else:
+                logger.warning(f"获取讯飞情感分析结果失败: {emotion}")
+                
+            return features
+        except Exception as e:
+            logger.error(f"异步提取讯飞API特征失败: {e}", exc_info=True)
+            return {}
+
     def extract_features(self, audio_file: str) -> Dict[str, Any]:
         """提取语音特征
         
@@ -497,93 +561,109 @@ class SpeechAnalyzer:
             # 如果使用讯飞服务，调用讯飞的语音识别API
             if self.use_xunfei and self.xunfei_service:
                 audio_bytes = AudioFeatureExtractor.read_audio_bytes(audio_file)
-                return self.xunfei_service.speech_recognition(audio_bytes)
+                response = self.xunfei_service.speech_recognition(audio_bytes)
+                logger.info(f"语音识别成功，结果: {response[:100]}...")
+                return response
             else:
                 # 不使用讯飞服务时返回空字符串，符合测试预期
                 return ""
         except Exception as e:
-            logger.error(f"语音转文字失败: {e}")
+            logger.error(f"语音识别失败: {e}", exc_info=True)
             return ""
     
     # 以下是异步版本的方法，为了兼容现有代码保留
     
     async def extract_features_async(self, audio_file: str) -> Dict[str, Any]:
-        """异步提取特征（兼容版）
+        """异步提取语音特征
         
-        Args:
-            audio_file: 音频文件路径
-            
-        Returns:
-            Dict[str, Any]: 提取的特征
+        通过在线程中运行同步的磁盘I/O和CPU密集型操作来避免阻塞事件循环。
         """
-        return self.extract_features(audio_file)
+        try:
+            logger.info(f"开始从音频文件异步提取特征: {audio_file}")
+            loop = asyncio.get_running_loop()
+
+            # 1. 异步读取音频文件（将同步IO操作移至线程池）
+            logger.debug("在线程池中异步读取音频文件字节数据...")
+            audio_bytes = await loop.run_in_executor(
+                None, AudioFeatureExtractor.read_audio_bytes, audio_file
+            )
+            logger.debug(f"音频文件异步读取成功，大小: {len(audio_bytes)} 字节")
+
+            # 2. 异步提取基本特征（将CPU密集型操作移至线程池）
+            logger.info("在线程池中异步提取基本音频特征...")
+            basic_features_task = loop.run_in_executor(
+                None, AudioFeatureExtractor.extract_from_file, audio_file
+            )
+
+            # 3. 并行执行网络请求
+            logger.info("开始并行提取讯飞API特征...")
+            xunfei_features_task = self._extract_xunfei_features_async(audio_bytes)
+
+            # 等待所有任务完成
+            results = await asyncio.gather(basic_features_task, xunfei_features_task)
+            basic_features, xunfei_features = results
+            
+            logger.info(f"基本音频特征异步提取完成，获得 {len(basic_features)} 个特征")
+            logger.info(f"讯飞API特征异步提取完成，获得 {len(xunfei_features)} 个特征")
+            
+            # 合并特征
+            features = {**basic_features, **xunfei_features}
+            logger.info(f"异步特征提取完成，总共 {len(features)} 个特征")
+            
+            return features
+        except Exception as e:
+            logger.error(f"异步提取语音特征失败: {e}", exc_info=True)
+            return {}
     
-    async def analyze_with_llm(self, audio_file: str, transcript: str = None) -> Dict[str, Any]:
-        """使用讯飞星火大模型分析语音
+    async def analyze_with_llm(self, audio_file: str, transcript: str = None, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """使用大语言模型进行语音分析（异步）
         
         Args:
             audio_file: 音频文件路径
-            transcript: 语音转写文本，如果为None则会自动进行语音识别
+            transcript: 预先转录的文本（可选）
+            params: 分析参数 (可选)
             
         Returns:
             Dict[str, Any]: 分析结果
         """
         if not self.use_xunfei_llm or not self.async_xunfei_service:
-            logger.warning("讯飞星火大模型未启用或初始化失败，无法使用LLM分析")
-            return self._fallback_analysis(audio_file)
+            logger.warning("未启用讯飞LLM或服务初始化失败，回退到基本分析方法")
+            return await self._fallback_analysis_async(audio_file)
         
         try:
-            logger.info(f"开始使用讯飞星火大模型分析语音文件: {audio_file}")
+            # 检查是否使用星火Lite版本
+            if "v1.1" in self.async_xunfei_service.spark_api_url:
+                logger.info(f"开始使用讯飞星火Lite大模型分析语音文件: {audio_file}")
+            else:
+                logger.info(f"开始使用讯飞星火大模型分析语音文件: {audio_file}")
             
-            # 如果没有提供文本，进行语音识别
             if transcript is None:
-                logger.info("未提供语音转写文本，进行语音识别...")
-                audio_bytes = AudioFeatureExtractor.read_audio_bytes(audio_file)
-                transcript = self.xunfei_service.speech_recognition(audio_bytes)
-                logger.info(f"语音识别完成，文本长度: {len(transcript)}")
+                logger.info("未提供文本，调用 speech_to_text_async 获取...")
+                transcript = await self.speech_to_text_async(audio_file)
             
             if not transcript or len(transcript) < 10:
                 logger.warning("语音转写文本为空或内容太少，无法进行LLM分析")
-                return self._fallback_analysis(audio_file)
-            
-            # 提取基本特征
-            logger.info("提取语音基本特征用于提示词构建...")
-            features = self.extract_features(audio_file)
-            
-            # 构建提示词
+                return await self._fallback_analysis_async(audio_file)
+
+            features = await self.extract_features_async(audio_file)
             prompt = self._build_speech_analysis_prompt(transcript, features)
+            messages = [{"role": "user", "content": prompt}]
             
-            # 准备对话消息
-            messages = [
-                {
-                    "role": "user", 
-                    "content": prompt
-                }
-            ]
+            response = await self.async_xunfei_service.chat_spark(messages)
             
-            logger.info("开始调用讯飞星火大模型...")
-            # 调用星火大模型
-            response = await self.async_xunfei_service.chat_spark(
-                messages=messages,
-                temperature=0.3,  # 低温度以获得更稳定的评分
-                max_tokens=2048
-            )
-            
-            # 解析结果
-            if response.get("status") == "success":
-                content = response.get("content", "")
-                logger.info(f"星火大模型调用成功，响应长度: {len(content)}")
-                return self._parse_llm_response(content)
+            if response and response.get("status") == "success":
+                logger.info("星火大模型分析成功")
+                return self._parse_llm_response(response["content"])
             else:
-                logger.error(f"星火大模型调用失败: {response.get('error', '未知错误')}")
-                return self._fallback_analysis(audio_file)
-                
+                logger.error(f"星火大模型分析失败: {response.get('error') if response else '未知错误'}")
+                return await self._fallback_analysis_async(audio_file)
+        
         except Exception as e:
-            logger.exception(f"LLM分析失败: {e}")
-            return self._fallback_analysis(audio_file)
+            logger.error(f"使用LLM进行语音分析时出错: {e}", exc_info=True)
+            return await self._fallback_analysis_async(audio_file)
     
     def _build_speech_analysis_prompt(self, transcript: str, features: Dict[str, Any]) -> str:
-        """构建语音分析提示词
+        """为语音分析构建提示词
         
         Args:
             transcript: 语音转写文本
@@ -735,154 +815,54 @@ class SpeechAnalyzer:
                 "error": str(e)
             }
     
-    def _fallback_analysis(self, audio_file: str) -> Dict[str, Any]:
-        """基于规则的回退分析方法
+    async def _fallback_analysis_async(self, audio_file: str) -> Dict[str, Any]:
+        """异步回退分析方法，在LLM分析失败时调用"""
+        logger.info("LLM分析失败或不可用，执行异步回退分析...")
         
-        Args:
-            audio_file: 音频文件路径
-            
-        Returns:
-            Dict[str, Any]: 分析结果
-        """
-        logger.info(f"使用基于规则的分析方法分析音频: {audio_file}")
-        
-        # 提取特征
-        features = self.extract_features(audio_file)
-        
-        # 分析各个维度
-        clarity = self._analyze_clarity(features)
-        pace = self._analyze_pace(features)
-        emotion_type, emotion_score = self._analyze_emotion(features)
-        
-        # 获取分析权重
-        weights = self._get_analysis_weights()
-        
-        # 计算综合评分
-        overall_score = (
-            clarity * weights["clarity"] +
-            pace * weights["pace"] +
-            emotion_score * weights["emotion"]
-        )
-        
-        # 生成优势和建议
-        strengths = []
-        suggestions = []
-        
-        # 基于规则生成优势和建议
-        if clarity > 7:
-            strengths.append("语音清晰度高，发音准确")
-        elif clarity < 5:
-            suggestions.append("提高语音清晰度，注意发音准确性")
-            
-        if pace > 7:
-            strengths.append("语速适中，表达流畅")
-        elif pace < 5:
-            suggestions.append("注意调整语速，避免过快或过慢")
-            
-        if emotion_score > 7:
-            strengths.append("情感表达丰富，语调变化适当")
-        elif emotion_score < 5:
-            suggestions.append("增强语音表现力，适当增加语调变化")
-        
-        # 确保至少有一个优势和一个建议
-        if not strengths:
-            strengths = ["整体表达基本清晰"]
-        if not suggestions:
-            suggestions = ["进一步锻炼语音表达能力"]
-        
-        # 构建结果
-        result = {
-            "scores": {
-                "clarity": round(clarity * 10),
-                "fluency": round(pace * 10),
-                "rhythm": round(pace * 10),
-                "expressiveness": round(emotion_score * 10),
-                "voice_quality": round(clarity * 10),
-                "overall_score": round(overall_score)
-            },
-            "analysis": {
-                "strengths": strengths,
-                "suggestions": suggestions
-            },
-            "summary": "基于规则的语音分析评估"
-        }
-        
-        logger.info(f"基于规则的分析完成，总分: {round(overall_score)}")
-        return result
-    
-    async def analyze_async(self, audio_file: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """异步分析音频文件
-        
-        使用LLM或基于规则的方法进行分析
-        
-        Args:
-            audio_file: 音频文件路径
-            params: 分析参数
-            
-        Returns:
-            Dict[str, Any]: 分析结果
-        """
+        # 不再调用analyze_async，而是直接使用基于特征的分析
         try:
-            logger.info(f"开始异步分析音频文件: {audio_file}")
-            
-            # 如果启用了讯飞星火大模型，使用LLM分析
-            if self.use_xunfei_llm and self.async_xunfei_service:
-                logger.info("使用讯飞星火大模型进行分析...")
-                result = await self.analyze_with_llm(audio_file)
-                
-                # 如果LLM分析成功，转换为兼容旧版API的格式
-                if "scores" in result and "analysis" in result:
-                    legacy_result = {
-                        "speech_rate": {
-                            "score": result["scores"].get("rhythm", 0),
-                            "feedback": "请参考详细分析"
-                        },
-                        "fluency": {
-                            "score": result["scores"].get("fluency", 0),
-                            "feedback": "请参考详细分析"
-                        },
-                        "emotion": {
-                            "score": result["scores"].get("expressiveness", 0), 
-                            "feedback": "请参考详细分析"
-                        },
-                        "overall_score": result["scores"].get("overall_score", 0),
-                        "detailed_scores": result["scores"],
-                        "analysis": result["analysis"],
-                        "summary": result.get("summary", "")
-                    }
-                    logger.info("LLM分析完成并转换为兼容格式")
-                    return legacy_result
-            
-            # 如果不使用LLM或LLM分析失败，使用基于规则的分析
-            logger.info("使用基于规则的方法进行分析...")
             # 提取特征
             features = await self.extract_features_async(audio_file)
             
-            # 分析特征
-            result = {
-                "speech_rate": await self.analyze_pace_async(features),
-                "fluency": await self.analyze_clarity_async(features),
-                "emotion": await self.analyze_emotion_async(features)
-            }
+            # 使用基于规则的分析方法
+            weights = self._get_analysis_weights()
             
-            # 计算整体分数
+            # 分析各维度
+            clarity_score = self._analyze_clarity(features) if features else 0
+            pace_score = self._analyze_pace(features) if features else 0
+            emotion_type, emotion_score = self._analyze_emotion(features) if features else ("中性", 0)
+            
+            # 计算总分
             total_score = (
-                result["speech_rate"]["score"] + 
-                result["fluency"]["score"] + 
-                result["emotion"]["score"]
-            ) / 3
-            result["overall_score"] = round(total_score)
+                clarity_score * weights["clarity"] +
+                pace_score * weights["pace"] +
+                emotion_score * weights["emotion"]
+            ) / sum(weights.values())
             
-            logger.info(f"基于规则的异步分析完成，总分: {round(total_score)}")
-            return result
+            # 格式化结果
+            return {
+                "speech_rate": {
+                    "score": pace_score * 10,  # 转换为0-100分
+                    "feedback": "语速适中" if pace_score > 7 else "建议调整语速"
+                },
+                "fluency": {
+                    "score": clarity_score * 10,  # 转换为0-100分
+                    "feedback": "表达流畅" if clarity_score > 7 else "建议提高表达流畅度"
+                },
+                "emotion": {
+                    "score": emotion_score * 10,  # 转换为0-100分
+                    "feedback": f"情感类型: {emotion_type}"
+                },
+                "overall_score": total_score * 10  # 转换为0-100分
+            }
         except Exception as e:
-            logger.exception(f"语音分析失败: {str(e)}")
+            logger.exception(f"异步回退分析失败: {e}")
             return {
                 "error": str(e),
+                "overall_score": 0,
                 "speech_rate": {"score": 0, "feedback": "分析失败"},
                 "fluency": {"score": 0, "feedback": "分析失败"},
-                "emotion": {"score": 0, "feedback": "分析失败"},
-                "overall_score": 0
+                "emotion": {"score": 0, "feedback": "分析失败"}
             }
 
     async def analyze_pace_async(self, features: Dict[str, Any]) -> Dict[str, Any]:
@@ -988,3 +968,76 @@ class SpeechAnalyzer:
             str: 转换后的文本
         """
         return self.speech_to_text(audio_file)
+
+    def _fallback_analysis(self, audio_file: str) -> Dict[str, Any]:
+        """回退分析方法，在LLM分析失败时调用
+        
+        用于同步方法。
+        """
+        logger.info("LLM分析失败或不可用，执行回退分析...")
+        features = self.extract_features(audio_file)
+        return self.analyze(features)
+
+    async def analyze_async(self, audio_file: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """异步分析音频文件
+        
+        使用LLM或基于规则的方法进行分析
+        
+        Args:
+            audio_file: 音频文件路径
+            params: 分析参数
+            
+        Returns:
+            Dict[str, Any]: 分析结果
+        """
+        try:
+            logger.info(f"开始异步分析音频文件: {audio_file}")
+            
+            # 如果启用了讯飞星火大模型，使用LLM分析
+            if self.use_xunfei_llm and self.async_xunfei_service:
+                logger.info("使用讯飞星火大模型进行分析...")
+                result = await self.analyze_with_llm(audio_file)
+                
+                # 如果LLM分析成功，转换为兼容旧版API的格式
+                if "scores" in result and "analysis" in result:
+                    legacy_result = {
+                        "speech_rate": {
+                            "score": result["scores"].get("rhythm", 0),
+                            "feedback": "请参考详细分析"
+                        },
+                        "fluency": {
+                            "score": result["scores"].get("fluency", 0),
+                            "feedback": "请参考详细分析"
+                        },
+                        "emotion": {
+                            "score": result["scores"].get("expressiveness", 0), 
+                            "feedback": "请参考详细分析"
+                        },
+                        "overall_score": result["scores"].get("overall_score", 0),
+                        "detailed_scores": result["scores"],
+                        "analysis": result["analysis"],
+                        "summary": result.get("summary", "")
+                    }
+                    logger.info("LLM分析完成并转换为兼容格式")
+                    return legacy_result
+            
+            # 如果不使用LLM或LLM分析失败，使用基于规则的分析
+            logger.info("使用基于规则的方法进行分析...")
+            # 调用修复后的_fallback_analysis_async方法，它不会再调用analyze_async
+            return await self._fallback_analysis_async(audio_file)
+        except Exception as e:
+            logger.exception(f"语音分析失败: {str(e)}")
+            return {
+                "error": str(e),
+                "total_score": 0,
+                "dimensions": {
+                    "clarity": {"score": 0, "feedback": "分析失败"},
+                    "pace": {"score": 0, "feedback": "分析失败"},
+                    "emotion": {"score": 0, "feedback": "分析失败"}
+                },
+                "suggestions": {
+                    "clarity": "Clarity suggestion placeholder",
+                    "pace": "Pace suggestion placeholder",
+                    "emotion": "Emotion suggestion placeholder"
+                }
+            }

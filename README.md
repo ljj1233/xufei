@@ -109,6 +109,43 @@ frontend/
 1. **快速面试(quick)**: 仅使用内容分析和语音分析，适合快速评估和练习。
 2. **完整面试(full)**: 使用内容分析、语音分析和视觉分析的完整评估，提供更全面的反馈。
 
+#### 工作流程对比
+
+```mermaid
+graph TD
+    subgraph 用户输入
+        A[回答问题的音频/视频流]
+    end
+
+    subgraph "快速面试 (mode='quick')"
+        A --› B1[语音转文字 ASR API]
+        A --› C1[语音评测 API]
+
+        B1 --› D1[纯文本内容]
+        C1 --› E1[多维度评分报告]
+
+        D1 --› F1[内容分析器 Content Analyzer]
+        E1 --› G1[语音分析器 Speech Analyzer]
+    end
+
+    subgraph "完整面试 (mode='full')"
+        A --› B2[语音转文字 ASR API]
+        A --› C2[语音评测 API]
+        A --› H2[视频流分析]
+
+        B2 --› D2[纯文本内容]
+        C2 --› E2[多维度评分报告]
+        H2 --› I2[视觉特征数据]
+
+        D2 --› F2[内容分析器 Content Analyzer]
+        E2 --› G2[语音分析器 Speech Analyzer]
+        I2 --› J2[视觉分析器 Visual Analyzer]
+    end
+
+    F1 & G1 --› K1[生成快速分析报告]
+    F2 & G2 & J2 --› K2[生成完整分析报告]
+```
+
 ### 2.2 智能体与后端接口
 
 智能体模块提供策略决策功能，通过`StrategyDecider`类根据`mode`参数选择分析策略：

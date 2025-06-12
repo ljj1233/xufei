@@ -46,7 +46,7 @@ OPENAI_MODEL=Qwen/Qwen2.5-7B-Instruct
 SPARK_APPID=your_spark_appid
 SPARK_API_KEY=your_spark_api_key
 SPARK_API_SECRET=your_spark_api_secret
-SPARK_API_URL=wss://spark-api.xfyun.cn/v1.1/chat
+SPARK_API_URL=wss://spark-api.xf-yun.com/v1.1/chat
 
 # LLM Provider Selection (New)
 # Options: modelscope, xunfei
@@ -72,10 +72,12 @@ OPENAI_API_BASE=https://api-inference.modelscope.cn/v1/
 OPENAI_MODEL=Qwen/Qwen2.5-7B-Instruct
 
 # Spark Big Model Configuration (New)
+# 注意：SPARK_API相关配置适用于讯飞星火大模型，Lite版本为免费无限量使用
 SPARK_APPID=your_spark_appid
 SPARK_API_KEY=your_spark_api_key
 SPARK_API_SECRET=your_spark_api_secret
-SPARK_API_URL=wss://spark-api.xfyun.cn/v1.1/chat
+# 星火Lite版本URL - 使用正确的域名和路径
+SPARK_API_URL=wss://spark-api.xf-yun.com/v1.1/chat
 
 # LLM Provider Selection (New)
 # Options: modelscope, xunfei
